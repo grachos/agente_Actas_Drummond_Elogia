@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/
+fixtures/
+*.pdf
+*.docx
+*.xlsx
+*.har
