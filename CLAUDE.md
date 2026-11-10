@@ -24,7 +24,7 @@ Repo público con el acceso a Silogtran ya resuelto. **Portar tal cual** (no ree
 Instancia: `https://construproyec.colombiasoftware.net` (`SILOG_BASE_URL`).
 
 ## Stack (por defecto; pendiente de confirmar)
-Node 22 ESM, Vercel (funciones serverless) + Supabase (Postgres + Storage privado). Front estático en `public/` (HTML/JS sin framework, como la referencia). `pdf-lib` para unir PDF. Chromium (el mismo del WAF) para renderizar el acta HTML → PDF. IA de visión para leer el escaneado (proveedor y modelo por variable de entorno).
+Node 22 ESM, Vercel (funciones serverless) + Supabase (Postgres + Storage privado). Front estático en `public/` (HTML/JS sin framework, como la referencia). `pdf-lib` para unir PDF. Chromium (el mismo del WAF) para renderizar el acta HTML → PDF. IA de visión para leer el escaneado: **Anthropic (Claude API)**, confirmado por el dueño; modelo por variable de entorno (`ANTHROPIC_API_KEY`, `IA_MODELO`).
 
 ## Flujo funcional
 1. Entrada: remesas + **consecutivo del acta** por cada una, por Excel (columnas `remesa`, `consecutivo`) o digitadas en la pantalla.
@@ -39,8 +39,8 @@ Una remesa = un acta. Cada remesa se procesa en su propia invocación (límite d
 
 ## Descarga del adjunto en Silogtran (dicho por el dueño; falta verificar el HTML)
 - Pantalla: `index.php?page=Despacho.Remesa_003.Buscar` → buscar el número de remesa → en la ficha, clic en la etiqueta `ctl0_MainModule_ItemsArchivosAdjuntos_ctl0_archivo_label` (primer adjunto del repetidor `ItemsArchivosAdjuntos`).
-- Archivo de ejemplo: `0101219771_57.pdf` (`<remesa>_<n>.pdf`; significado de `_57` sin confirmar).
-- **Sin verificar**: nombres de los campos del buscador, si el clic es enlace directo, postback o `window.open`, y qué hacer si hay varios adjuntos (`ctl1`, `ctl2`…) o ninguno. → Resolver con el diagnóstico de I1 antes de programar la descarga.
+- El soporte es **solo** el adjunto cuyo nombre es `<remesa>_<n>.pdf` (ej. `0101219771_57.pdf`); el sufijo `_<n>` lo pone Silogtran y no significa nada. Cualquier otro adjunto se ignora. Si ninguno o más de uno cumple el patrón → error y revisión (confirmado por el dueño 2026-11-10).
+- **Sin verificar**: nombres de los campos del buscador, si el clic es enlace directo, postback o `window.open`, y cómo se ve el nombre del archivo en la lista de adjuntos. → Resolver con el diagnóstico de I1 antes de programar la descarga.
 - Validar la descarga: `content-type` PDF, cabecera `%PDF`, mismo origen, tamaño > 0.
 
 ## El PDF soporte (muestra real analizada 2026-11-10)
@@ -92,7 +92,7 @@ Modelos entregados por el dueño en Word (ya diligenciados; no están en el repo
 | Fecha de terminación | **pendiente** (el sello de recibido no se lee; en 3 de 4 modelos = inicio) |
 | Sede | orden de salida / orden de compra (**confirmar** si es fija por tipo) |
 | Documentos adjuntos | `<código Bill of Inland> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
-| Fecha del acta y cierre en letras («a los N días del mes de MES del año AAAA») | fecha de generación en America/Bogota, editable (**supuesto, confirmar**) |
+| Fecha del acta y cierre en letras («a los N días del mes de MES del año AAAA») | fecha en que se elabora el acta (día de generación, America/Bogota), editable en la revisión (confirmado 2026-11-10) |
 
 Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA VEHICULO TIPO: <tipo> RUTA: <ruta> TIPO DE CARGA: <carga>` (sin la jurisdicción, como en los modelos).
 
@@ -122,7 +122,7 @@ Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA
 - **I8 Cierre**: límites de intentos, auditoría, manual de uso, pruebas de punta a punta con remesas reales.
 
 ## Variables de entorno (sin valores en el repo)
-`SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, clave y modelo de la IA de visión, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
+`SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
 1. Línea de la orden: ¿siempre sale del `L<n>` del Bill of Inland?
@@ -130,8 +130,5 @@ Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA
 3. Contrato (DCI) y AFE: ¿fijos por tipo?
 4. Cantidad facturada: ¿siempre 1 por remesa?
 5. Sede: ¿fija por tipo o leída del PDF?
-6. Fecha del acta: ¿la del día en que se genera?
-7. Si la remesa tiene varios adjuntos, ¿cuál es el soporte? ¿Qué es el `_57`?
-8. Proveedor de IA permitido por el cliente (los escaneados salen a un tercero).
-9. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
-10. Faltan muestras reales de DEIPO, CMLTD y EDLTD y una poco legible.
+6. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
+7. Faltan muestras reales de DEIPO, CMLTD y EDLTD y una poco legible.
