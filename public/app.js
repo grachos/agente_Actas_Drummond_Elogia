@@ -130,12 +130,18 @@ async function abrir(id, { pagina } = {}) {
   const pane = $('#pane');
   const pintaPane = () => {
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === st.tab));
-    if (st.tab === 'acta') { pane.innerHTML = `<iframe title="Vista previa" src="/api/actas/vista?id=${id}&t=${Date.now()}"></iframe>`; return; }
+    if (st.tab === 'acta') { pane.innerHTML = `<p class="muted small">Así saldrá el acta en el PDF (las firmas van en blanco). Se genera al abrir esta pestaña…</p><iframe title="Vista previa del acta" src="/api/actas/vistapdf?id=${id}&t=${Date.now()}#view=FitH&toolbar=1"></iframe>`; return; }
     pane.innerHTML = (acta.alertas.length ? `<ul class="alerts">${acta.alertas.map((a, i) => `<li data-i="${i}" title="Ver en el soporte">⚠ ${esc(a.mensaje)}</li>`).join('')}</ul>` : '<p class="muted">Sin alertas: las dos lecturas coinciden y las validaciones pasaron.</p>') +
       `<div class="form" id="form">${CAMPOS.map(([k, t, tipo]) => `<label class="${[...malos].some((m) => k.toLowerCase().includes(m.replace(/^(bill_|orden_)/, '')) ) ? 'bad' : ''}">${t}${tipo === 'area' ? `<textarea name="${k}" rows="3">${esc(acta.datos[k])}</textarea>` : `<input name="${k}" value="${esc(acta.datos[k])}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`).join('')}</div>`;
     pane.querySelectorAll('.alerts li').forEach((li) => li.addEventListener('click', () => { const p = PAGINA(acta.alertas[li.dataset.i].campo, pg); if (p) $('#pdfv').src = `/api/actas/soporte?id=${id}&t=${Date.now()}#page=${p}&view=FitH`; }));
   };
-  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.t; pintaPane(); }));
+  const cambiado = () => [...document.querySelectorAll('#form [name]')].some((i) => i.name !== 'valorTotal' && String(acta.datos[i.name] ?? '') !== i.value);
+  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', async () => {
+    if (b.dataset.t === 'acta' && st.tab === 'datos' && cambiado()) { // the preview shows what is saved: save the edits first
+      try { await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await cargarActas(); st.tab = 'acta'; return abrir(id); } catch (e) { alert(e.message); return; }
+    }
+    st.tab = b.dataset.t; pintaPane();
+  }));
   pintaPane();
   const leer = () => Object.fromEntries([...document.querySelectorAll('#form [name]')].map((i) => [i.name, i.value]));
   $('#gBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await cargarActas(); abrir(id); } catch (e) { alert(e.message); } };

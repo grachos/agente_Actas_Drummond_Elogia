@@ -6,7 +6,7 @@ import { procesarActa } from '../../src/procesar.js';
 import { descargarSoporte } from '../../src/soporte/descargar.js';
 import { sanearDatos } from '../../src/actas/validarEdicion.js';
 import { armarPdfFinal, nombreFinal } from '../../src/actas/final.js';
-import { actaHtml } from '../../src/actas/html.js';
+import { renderActaPdf } from '../../src/actas/pdf.js';
 import { getConfigTipo } from '../../src/store/config.js';
 
 const cargar = async (id) => { const a = await A.obtener(id); if (!a) throw new ApiError('NOT_FOUND', 'No existe esa acta.', { status: 404 }); return a; };
@@ -29,13 +29,12 @@ export default route({
   },
   'POST:desaprobar': async (req, res) => { await requireSession(req); await A.desaprobar(intParam(body(req).id)); res.status(200).json({ ok: true }); },
   'GET:soporte': async (req, res) => { await requireSession(req); const a = await cargar(intParam(req.query.id)); pdf(res, await descargarSoporte(a.remesa), `${a.remesa}_soporte.pdf`); },
-  'GET:vista': async (req, res) => {
+  // Exact acta as it will be printed (without the support), for the review screen.
+  'GET:vistapdf': async (req, res) => {
     await requireSession(req);
     const a = await cargar(intParam(req.query.id));
     if (!a.datos || !a.tipo) throw new ApiError('SIN_DATOS', 'Esa acta aún no tiene datos.', { status: 409 });
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
-    res.status(200).send(actaHtml(await getConfigTipo(a.tipo), a.datos, { vista: true }));
+    pdf(res, await renderActaPdf(await getConfigTipo(a.tipo), a.datos), `${a.tipo}_${a.remesa}_vista.pdf`);
   },
   'GET:pdf': async (req, res) => {
     await requireSession(req);

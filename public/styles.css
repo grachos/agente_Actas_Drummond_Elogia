@@ -32,7 +32,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .split iframe { width: 100%; height: 100%; border: 0; border-right: 1px solid var(--line); background: #888; }
 .panel { display: flex; flex-direction: column; min-height: 0; background: var(--card); }
 .tabs { display: flex; border-bottom: 1px solid var(--line); } .tabs button { border: 0; border-radius: 0; background: none; padding: 10px 14px; } .tabs button.on { border-bottom: 2px solid var(--accent); font-weight: 600; }
-.pane { flex: 1; overflow: auto; padding: 12px; min-height: 0; } .pane iframe { border: 1px solid var(--line); height: 100%; min-height: 70vh; background: #fff; }
+.pane { flex: 1; overflow: auto; padding: 12px; min-height: 0; } .pane iframe { border: 1px solid var(--line); width: 100%; height: calc(100% - 28px); min-height: 70vh; background: #fff; }
 .alerts { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 4px; }
 .alerts li { border-left: 3px solid var(--warn); padding: 4px 8px; background: color-mix(in srgb, var(--warn) 10%, transparent); cursor: pointer; }
 .form { display: grid; gap: 8px; } .form label { display: grid; gap: 2px; font-size: 12px; color: var(--muted); } .form input, .form textarea { color: var(--ink); width: 100%; }
