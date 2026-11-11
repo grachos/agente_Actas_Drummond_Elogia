@@ -5,7 +5,7 @@ Aplicación web que genera las **actas de entrega** (DEIPO, CMLTD, CPLTD, EDLTD)
 1. Cargas remesas (Excel o a mano); el consecutivo de cada acta se asigna solo al aprobar, desde un contador por tipo en Configuración.
 2. El sistema baja el PDF de soporte de cada remesa desde Silogtran y lo **lee con IA** (Anthropic).
 3. Una persona **revisa** los datos junto al soporte, en una sola pantalla, y aprueba.
-4. Se genera **un solo PDF por remesa** (acta + soporte) para descargar o, más adelante, enviar por correo.
+4. Se genera **un solo PDF por remesa** (acta + soporte, nombrado con el consecutivo, ej. `CPLTD-068-26.pdf`) para descargar o, más adelante, enviar por correo.
 
 Stack: Vercel (funciones Node 22) · MySQL en Hostinger · Anthropic API · Chromium para el PDF. Los usuarios entran con su cuenta de Silogtran (la contraseña no se guarda).
 

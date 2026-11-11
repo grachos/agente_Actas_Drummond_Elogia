@@ -4,7 +4,8 @@ import { renderActaPdf } from './pdf.js';
 import { descargarSoporte } from '../soporte/descargar.js';
 import { getConfigTipo } from '../store/config.js';
 
-export const nombreFinal = (acta) => `${acta.tipo}_${acta.remesa}.pdf`;
+// Downloaded file name = the full acta number (e.g. CPLTD-068-26.pdf); only approved actas are downloaded, so the number always exists.
+export const nombreFinal = (acta) => `${String(acta.consecutivo || `${acta.tipo}_${acta.remesa}`).replace(/[^A-Za-z0-9._-]/g, '_')}.pdf`;
 
 export async function armarPdfFinal(acta, deps = { render: renderActaPdf, soporte: descargarSoporte, getConfig: getConfigTipo }) {
   const cfg = await deps.getConfig(acta.tipo);

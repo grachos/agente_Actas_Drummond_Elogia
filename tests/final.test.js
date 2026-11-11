@@ -9,7 +9,8 @@ const pdfDe = async (n) => { const d = await PDFDocument.create(); for (let i = 
 test('final PDF = acta pages first, then the support untouched, in one file', async () => {
   const buf = await armarPdfFinal({ tipo: 'CPLTD', remesa: '0100000001', datos: {} }, { getConfig: async () => ({}), render: async () => pdfDe(2), soporte: async () => pdfDe(5) });
   assert.equal((await PDFDocument.load(buf)).getPageCount(), 7);
-  assert.equal(nombreFinal({ tipo: 'CPLTD', remesa: '0100000001' }), 'CPLTD_0100000001.pdf');
+  assert.equal(nombreFinal({ tipo: 'CPLTD', remesa: '0100000001', consecutivo: 'CPLTD-068-26' }), 'CPLTD-068-26.pdf');
+  assert.equal(nombreFinal({ tipo: 'CPLTD', remesa: '0100000001', consecutivo: '' }), 'CPLTD_0100000001.pdf'); // fallback, never used for approved actas
 });
 
 const ok = { ordenCompleta: 'CPLTD-1', adjuntos: 'A', fechaActa: '11/11/2026', fechaServicio: '02/09/2026',
