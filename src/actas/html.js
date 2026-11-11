@@ -1,6 +1,7 @@
 // Builds the HTML of an "Acta de recibo de servicios" (DLTD variants: CMLTD, CPLTD, EDLTD) and its page header.
 // `cfg` = fixed values of the acta type (stored in the DB, never in the repo); `d` = per-acta data (already formatted).
 import { MESES } from '../lib/fechas.js';
+import { lineasDe } from './datos.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const FONT = "Carlito, Calibri, 'Liberation Sans', Arial, sans-serif";
@@ -78,7 +79,7 @@ export function actaHtml(cfg, d) {
   <table class="l">
     <colgroup><col style="width:9%"><col style="width:35%"><col style="width:14%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup>
     <tr><th>Línea de la Orden de Compra</th><th>Descripción</th><th>Cantidad<br>de la Orden de Compra</th><th>Cantidad Facturada<br>de la Orden de Compra</th><th>Valor Unitario<br>de la Orden de Compra</th><th>Valor Total Facturado<br>de la Orden de Compra</th></tr>
-    <tr><td><b>${esc(d.linea)}</b></td><td class="desc">${esc(d.descripcion)}</td><td>${esc(d.cantidadOrden)}</td><td>${esc(d.cantidadFacturada)}</td><td>${esc(d.valorUnitario)}</td><td>${esc(d.valorTotal)}</td></tr>
+    ${lineasDe(d).map((l) => `<tr><td><b>${esc(l.linea)}</b></td><td class="desc">${esc(l.descripcion)}</td><td>${esc(l.cantidadOrden)}</td><td>${esc(l.cantidadFacturada)}</td><td>${esc(l.valorUnitario)}</td><td>${esc(l.valorTotal)}</td></tr>`).join('')}
   </table>
   <p>Se reunieron en las instalaciones de ${esc(cfg.empresaNombre)} (en adelante ${sigla}), la Señora <b>${esc(cfg.repContratista)}</b> en nombre y representación del CONTRATISTA/PROVEEDOR, identificada con cédula de ciudadanía No <b>${esc(cfg.cedulaContratista)}</b> y el Señor <b>${esc(cfg.repDrummond)}</b>, en nombre y representación de ${sigla} con el fin de proceder a la entrega y recibo de las Obras y/o Servicios de la mencionada Orden de Compra y/o Servicios.</p>
   <p>El CONTRATISTA declara lo siguiente:</p>

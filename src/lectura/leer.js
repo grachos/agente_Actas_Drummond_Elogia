@@ -17,7 +17,7 @@ const TOOL = {
       bill_cargo_consignment: str('Valor de «CARGO CONSIGNMENT» del Bill of Inland, solo dígitos'),
       bill_fecha_despacho: str('«DATE OF DISPATCH» del Bill of Inland como AAAA-MM-DD (día / mes abreviado / año de 2 dígitos)'),
       bill_placa: str('Placa del cuadro de letras del Bill of Inland, sin espacios'),
-      bill_po_transport: str('Valor de «PO. TRANSPORT» del Bill of Inland tal cual, ej. «500284486A L12»'),
+      bill_po_transport: str('Valor de «PO. TRANSPORT» del Bill of Inland tal cual, ej. «500284486A L12»; si trae más de una línea inclúyelas todas, ej. «7400007648 L1 L2»'),
       orden_numero: str('Número de la orden de compra con prefijo, ej. CPLTD-500284486A (página «Purchase Order» u «Orden de Compra»)'),
       lineas_orden: {
         type: 'array',
@@ -26,7 +26,7 @@ const TOOL = {
           type: 'object',
           properties: {
             linea: { type: 'integer', description: 'Número de línea (el número antes del guion en «Lín-Env», ej. «12- 1» → 12)' },
-            descripcion: { type: 'string', description: 'Descripción tal cual en una sola línea, SIN la parte «JURISDICCIÓN: …»' },
+            descripcion: { type: 'string', description: 'Descripción tal cual en una sola línea, INCLUYENDO la parte «JURISDICCIÓN: …»' },
             cantidad: { type: 'string', description: 'Cantidad impresa, ej. «3.00EA»' },
             precio: { type: 'string', description: 'Precio unitario (PO Price) impreso, ej. «1,296,000.00»' },
             total: { type: 'string', description: 'Monto (Extended Amt / Valor Total) impreso, ej. «3,888,000.00»' },
@@ -34,7 +34,6 @@ const TOOL = {
           required: ['linea', 'descripcion', 'cantidad', 'precio', 'total'],
         },
       },
-      orden_objeto: str('Descripción general / objeto del servicio de la orden de compra (texto libre del encabezado o bajo las líneas, ej. «SERVICIOS DE RENTA DE CAMA ALTA»); null si no aparece. Solo texto, sin números de línea'),
       orden_salida_placa: str('Placa en la «ORDEN DE SALIDA» de Drummond; null si no hay esa página'),
       trf_numeros: { type: 'array', items: { type: 'string' }, description: 'Números «TRF NUMBER» legibles de los Transport Request Form (puede haber varios; omite los ilegibles)' },
       paginas: {

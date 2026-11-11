@@ -12,14 +12,18 @@ test('final PDF = acta pages first, then the support untouched, in one file', as
   assert.equal(nombreFinal({ tipo: 'CPLTD', remesa: '0100000001' }), 'CPLTD_0100000001.pdf');
 });
 
-const ok = { consecutivo: 'C-1', ordenCompleta: 'CPLTD-1', linea: '12', descripcion: 'X', cantidadOrden: '3,00', cantidadFacturada: '2,00', valorUnitario: '1.296.000', adjuntos: 'A', fechaActa: '11/11/2026', fechaServicio: '02/09/2026' };
-test('sanearDatos recomputes the total, derives the closing date and rejects bad input', () => {
+const ok = { consecutivo: 'C-1', ordenCompleta: 'CPLTD-1', adjuntos: 'A', fechaActa: '11/11/2026', fechaServicio: '02/09/2026',
+  lineas: [{ linea: '12', descripcion: 'X', cantidadOrden: '3,00', cantidadFacturada: '2,00', valorUnitario: '1.296.000' }] };
+test('sanearDatos recomputes each line total, derives the closing date, allows a blank object and rejects bad input', () => {
   const d = sanearDatos(ok);
-  assert.equal(d.valorTotal, '2.592.000');
+  assert.equal(d.lineas[0].valorTotal, '2.592.000');
   assert.deepEqual(d.cierre, { dia: 11, mes: 11, anio: 2026 });
+  assert.equal(sanearDatos({ ...ok, objeto: '' }).objeto, '');
+  assert.equal(sanearDatos({ ...ok, objeto: '  RENTA   DE CAMA ALTA ' }).objeto, 'RENTA DE CAMA ALTA');
+  const dos = sanearDatos({ ...ok, lineas: [ok.lineas[0], { ...ok.lineas[0], linea: '13', cantidadFacturada: '1,00', valorUnitario: '2.760.000' }] });
+  assert.deepEqual(dos.lineas.map((l) => l.valorTotal), ['2.592.000', '2.760.000']);
   assert.throws(() => sanearDatos({ ...ok, fechaActa: '31/02/2026' }), /fecha/);
-  assert.throws(() => sanearDatos({ ...ok, valorUnitario: '1296000' }), /valor unitario/);
-  assert.throws(() => sanearDatos({ ...ok, descripcion: '' }), /vacío/);
-  assert.throws(() => sanearDatos(ok, { objetoObligatorio: true }), /objeto/);
-  assert.equal(sanearDatos({ ...ok, objeto: '  RENTA   DE CAMA ALTA ' }, { objetoObligatorio: true }).objeto, 'RENTA DE CAMA ALTA');
+  assert.throws(() => sanearDatos({ ...ok, lineas: [{ ...ok.lineas[0], valorUnitario: '1296000' }] }), /valor unitario/);
+  assert.throws(() => sanearDatos({ ...ok, lineas: [{ ...ok.lineas[0], descripcion: '' }] }), /vacío/);
+  assert.throws(() => sanearDatos({ ...ok, lineas: [] }), /entre 1 y/);
 });

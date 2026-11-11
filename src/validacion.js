@@ -12,10 +12,12 @@ export function partirOrden(texto) {
   return m ? { prefijo: m[1], numero: m[2] } : null;
 }
 
-// Bill "PO. TRANSPORT" ("500284486A L12" / "0100443504 L1") -> { numero, linea }
+// Bill "PO. TRANSPORT" ("500284486A L12", "0100443504 L1", "7400007648 L1 L2") -> { numero, linea (first), lineas: [all] }
 export function partirPoTransport(texto) {
-  const m = /^([0-9A-Z]+)\s*L\s*(\d{1,3})$/.exec(String(texto ?? '').trim().toUpperCase());
-  return m ? { numero: m[1], linea: Number(m[2]) } : null;
+  const m = /^([0-9A-Z]+)((?:\s*[,/&+-]?\s*L\s*\d{1,3})+)$/.exec(String(texto ?? '').trim().toUpperCase());
+  if (!m) return null;
+  const lineas = [...m[2].matchAll(/L\s*(\d{1,3})/g)].map((x) => Number(x[1]));
+  return { numero: m[1], linea: lineas[0], lineas };
 }
 
 const sinCeros = (s) => String(s).replace(/^0+/, '');
@@ -58,26 +60,23 @@ export function validar(lectura, { remesa }) {
     err('fechas', `La fecha de la remesa (${L.remesa_fecha}) y la del Bill (${L.bill_fecha_despacho}) difieren.`);
   }
 
-  // order line
-  let linea = null;
-  let cantidadFacturada = null;
+  // order lines (a remesa may bill more than one line of the same order)
+  const lineas = [];
   if (po) {
-    linea = (L.lineas_orden ?? []).find((x) => Number(x.linea) === po.linea) ?? null;
-    if (!linea) err('lineas_orden', `La línea ${po.linea} no aparece en la página de la orden de compra.`);
-    else {
+    for (const n of [...new Set(po.lineas)]) {
+      const linea = (L.lineas_orden ?? []).find((x) => Number(x.linea) === n);
+      if (!linea) { err('lineas_orden', `La línea ${n} no aparece en la página de la orden de compra.`); continue; }
       const q = parseUS(linea.cantidad); // hundredths of a unit
       const precio = parseUS(linea.precio); // cents
       const total = parseUS(linea.total); // cents
-      if (q === null || precio === null || total === null) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${po.linea}.`);
-      else {
-        if (q * precio !== total * 100) err('linea', `Cantidad × precio (${linea.cantidad} × ${linea.precio}) no es igual al total (${linea.total}).`);
-        cantidadFacturada = 1; // one trip per remesa (owner rule 2026-11-11)
-      }
-      if (!String(linea.descripcion ?? '').trim()) err('linea', 'La descripción de la línea está vacía.');
+      if (q === null || precio === null || total === null) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${n}.`);
+      else if (q * precio !== total * 100) err('linea', `Línea ${n}: cantidad × precio (${linea.cantidad} × ${linea.precio}) no es igual al total (${linea.total}).`);
+      if (!String(linea.descripcion ?? '').trim()) err('linea', `La descripción de la línea ${n} está vacía.`);
+      lineas.push(linea);
     }
   }
 
-  return { ok: errores.length === 0, tipo: orden?.prefijo ?? null, linea, cantidadFacturada, errores };
+  return { ok: errores.length === 0, tipo: orden?.prefijo ?? null, lineas, linea: lineas[0] ?? null, cantidadFacturada: 1, errores }; // billed quantity = 1 per line (owner rule 2026-11-11)
 }
 
 // Two independent readings must agree on every critical field; returns the list of disagreeing fields.

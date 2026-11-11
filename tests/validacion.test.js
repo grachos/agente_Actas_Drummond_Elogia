@@ -20,6 +20,7 @@ test('a consistent reading passes and bills 1', () => {
   assert.equal(r.ok, true, JSON.stringify(r.errores));
   assert.equal(r.tipo, 'CPLTD');
   assert.equal(r.linea.linea, 12);
+  assert.equal(r.lineas.length, 1);
   assert.equal(r.cantidadFacturada, 1);
 });
 test('order in the Bill may lack the prefix and leading zeros', () => {
@@ -48,8 +49,17 @@ test('comparar finds disagreements between two readings', () => {
   b.bill_codigo = 'XYZ002SEP26'; b.lineas_orden[1].precio = '1,296,001.00';
   assert.deepEqual(comparar(a, b).sort(), ['bill_codigo', 'lineas_orden']);
 });
+test('a remesa can bill two lines of the same order', () => {
+  const l = base(); l.bill_po_transport = '500000001A L11 L12';
+  const r = validar(l, { remesa: '0100000001' });
+  assert.equal(r.ok, true, JSON.stringify(r.errores));
+  assert.deepEqual(r.lineas.map((x) => x.linea), [11, 12]);
+  l.bill_po_transport = '500000001A L12, L99';
+  assert.ok(validar(l, { remesa: '0100000001' }).errores.some((e) => e.campo === 'lineas_orden'));
+});
 test('parsers', () => {
   assert.deepEqual(partirOrden('cpltd-500284486a'), { prefijo: 'CPLTD', numero: '500284486A' });
-  assert.deepEqual(partirPoTransport('0100443504 L1'), { numero: '0100443504', linea: 1 });
+  assert.deepEqual(partirPoTransport('0100443504 L1'), { numero: '0100443504', linea: 1, lineas: [1] });
+  assert.deepEqual(partirPoTransport('7400007648 L1/L2').lineas, [1, 2]);
   assert.equal(partirPoTransport('basura'), null);
 });

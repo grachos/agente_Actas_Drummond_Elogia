@@ -19,16 +19,13 @@ export default route({
     await requireSession(req);
     const id = intParam(body(req).id); const a = await cargar(id);
     if (!['LISTA', 'REVISAR', 'APROBADA'].includes(a.estado)) throw new ApiError('ESTADO_INVALIDO', 'Esa acta aún no está lista para editar.', { status: 409 });
-    const cfg = await getConfigTipo(a.tipo);
-    await A.guardarDatos(id, sanearDatos(body(req).datos, { objetoObligatorio: Boolean(cfg.objetoDeOrden) }));
+    await A.guardarDatos(id, sanearDatos(body(req).datos));
     res.status(200).json({ ok: true, acta: await cargar(id) });
   },
   'POST:aprobar': async (req, res) => {
     const u = await requireSession(req);
     const ids = (body(req).ids ?? []).map((x) => intParam(x));
-    const ok = []; // types that take the object from the order cannot be approved without it
-    for (const id of ids) { const a = await A.obtener(id); if (!a?.tipo || !a.datos) continue; const cfg = await getConfigTipo(a.tipo).catch(() => ({})); if (cfg.objetoDeOrden && !a.datos.objeto) continue; ok.push(id); }
-    res.status(200).json({ ok: true, aprobadas: await A.aprobar(ok, u.id), omitidas: ids.length - ok.length });
+    res.status(200).json({ ok: true, aprobadas: await A.aprobar(ids, u.id) });
   },
   'POST:desaprobar': async (req, res) => { await requireSession(req); await A.desaprobar(intParam(body(req).id)); res.status(200).json({ ok: true }); },
   'GET:soporte': async (req, res) => { await requireSession(req); const a = await cargar(intParam(req.query.id)); pdf(res, await descargarSoporte(a.remesa), `${a.remesa}_soporte.pdf`); },

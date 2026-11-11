@@ -109,7 +109,17 @@ $('#zipBtn').addEventListener('click', async () => {
 });
 
 /* ---------- revisión ---------- */
-const CAMPOS = [['consecutivo', 'Consecutivo del acta'], ['objeto', 'Objeto del servicio (de la orden de compra)', 'area'], ['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación'], ['linea', 'Línea'], ['descripcion', 'Descripción', 'area'], ['cantidadOrden', 'Cantidad de la orden'], ['cantidadFacturada', 'Cantidad facturada'], ['valorUnitario', 'Valor unitario'], ['valorTotal', 'Valor total facturado', 'ro'], ['adjuntos', 'Documentos adjuntos', 'area']];
+const GENERALES = [['consecutivo', 'Consecutivo del acta'], ['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación']];
+const LINEA = [['linea', 'Línea'], ['descripcion', 'Descripción', 'area'], ['cantidadOrden', 'Cantidad de la orden'], ['cantidadFacturada', 'Cantidad facturada'], ['valorUnitario', 'Valor unitario'], ['valorTotal', 'Valor total facturado', 'ro']];
+const lineasDe = (d) => d.lineas ?? [{ linea: d.linea, descripcion: d.descripcion, cantidadOrden: d.cantidadOrden, cantidadFacturada: d.cantidadFacturada, valorUnitario: d.valorUnitario, valorTotal: d.valorTotal }];
+const campo = (name, titulo, tipo, valor, mal) => `<label class="${mal ? 'bad' : ''}">${titulo}${tipo === 'area' ? `<textarea name="${name}" rows="3">${esc(valor)}</textarea>` : `<input name="${name}" value="${esc(valor)}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`;
+// Plain map of every editable value (names: field, or l<i>.field for order lines); used to detect edits and to build the payload.
+const aplanar = (d) => ({ ...Object.fromEntries([...GENERALES.map(([k]) => k), 'objeto', 'adjuntos'].filter((k) => k in d).map((k) => [k, d[k]])), ...Object.fromEntries(lineasDe(d).flatMap((l, i) => LINEA.map(([k]) => [`l${i}.${k}`, l[k]]))) });
+function desaplanar(m) {
+  const d = Object.fromEntries(Object.entries(m).filter(([k]) => !k.includes('.')));
+  d.lineas = []; for (const [k, v] of Object.entries(m)) { const x = /^l(\d+)\.(.+)$/.exec(k); if (x) (d.lineas[+x[1]] ??= {})[x[2]] = v; }
+  return d;
+}
 const PAGINA = (campo, p = {}) => (/^(remesa|placa_remesa)/.test(campo) ? p.remesa : /^(bill|placa)/.test(campo) ? p.bill : /^(orden_numero|lineas_orden|linea)/.test(campo) ? p.orden : null);
 
 async function abrir(id, { pagina } = {}) {
@@ -132,10 +142,11 @@ async function abrir(id, { pagina } = {}) {
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === st.tab));
     if (st.tab === 'acta') { pane.innerHTML = `<p class="muted small">Así saldrá el acta en el PDF (las firmas van en blanco). Se genera al abrir esta pestaña…</p><iframe title="Vista previa del acta" src="/api/actas/vistapdf?id=${id}&t=${Date.now()}#view=FitH&toolbar=1"></iframe>`; return; }
     pane.innerHTML = (acta.alertas.length ? `<ul class="alerts">${acta.alertas.map((a, i) => `<li data-i="${i}" title="Ver en el soporte">⚠ ${esc(a.mensaje)}</li>`).join('')}</ul>` : '<p class="muted">Sin alertas: las dos lecturas coinciden y las validaciones pasaron.</p>') +
-      `<div class="form" id="form">${CAMPOS.filter(([k]) => k !== 'objeto' || 'objeto' in acta.datos).map(([k, t, tipo]) => `<label class="${[...malos].some((m) => k.toLowerCase().includes(m.replace(/^(bill_|orden_)/, '')) ) ? 'bad' : ''}">${t}${tipo === 'area' ? `<textarea name="${k}" rows="3">${esc(acta.datos[k])}</textarea>` : `<input name="${k}" value="${esc(acta.datos[k])}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`).join('')}</div>`;
+      `<div class="form" id="form">${GENERALES.map(([k, t]) => campo(k, t, '', acta.datos[k], malos.has('orden_numero') && k === 'ordenCompleta')).join('')}${'objeto' in acta.datos ? campo('objeto', 'Objeto del servicio (opcional; queda en blanco si no lo escribes)', 'area', acta.datos.objeto) : ''}${lineasDe(acta.datos).map((l, i) => `<fieldset><legend>Línea ${esc(l.linea)} de la orden de compra</legend>${LINEA.map(([k, t, tipo]) => campo(`l${i}.${k}`, t, tipo, l[k], (malos.has('linea') || malos.has('lineas_orden')) && k !== 'valorTotal')).join('')}</fieldset>`).join('')}${campo('adjuntos', 'Documentos adjuntos', 'area', acta.datos.adjuntos)}</div>`;
     pane.querySelectorAll('.alerts li').forEach((li) => li.addEventListener('click', () => { const p = PAGINA(acta.alertas[li.dataset.i].campo, pg); if (p) $('#pdfv').src = `/api/actas/soporte?id=${id}&t=${Date.now()}#page=${p}&view=FitH`; }));
   };
-  const cambiado = () => [...document.querySelectorAll('#form [name]')].some((i) => i.name !== 'valorTotal' && String(acta.datos[i.name] ?? '') !== i.value);
+  const actual = () => Object.fromEntries([...document.querySelectorAll('#form [name]')].map((i) => [i.name, i.value]));
+  const cambiado = () => { const o = aplanar(acta.datos); return Object.entries(actual()).some(([k, v]) => !k.endsWith('.valorTotal') && String(o[k] ?? '') !== v); };
   document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', async () => {
     if (b.dataset.t === 'acta' && st.tab === 'datos' && cambiado()) { // the preview shows what is saved: save the edits first
       try { await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await cargarActas(); st.tab = 'acta'; return abrir(id); } catch (e) { alert(e.message); return; }
@@ -143,7 +154,7 @@ async function abrir(id, { pagina } = {}) {
     st.tab = b.dataset.t; pintaPane();
   }));
   pintaPane();
-  const leer = () => Object.fromEntries([...document.querySelectorAll('#form [name]')].map((i) => [i.name, i.value]));
+  const leer = () => desaplanar(actual());
   $('#gBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await cargarActas(); abrir(id); } catch (e) { alert(e.message); } };
   $('#aBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await api('/api/actas/aprobar', { method: 'POST', body: { ids: [id] } }); await cargarActas(); siguiente(1); } catch (e) { alert(e.message); } };
 }

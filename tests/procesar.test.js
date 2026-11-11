@@ -11,15 +11,19 @@ const lect = () => ({
   lineas_orden: [{ linea: 12, descripcion: 'SERVICIO DE TRANSPORTE   VEHÍCULO TIPO: CAMION 600 RUTA: PDR-BAQ JURISDICCIÓN: CIÉNAGA', cantidad: '3.00EA', precio: '1,296,000.00', total: '3,888,000.00' }],
 });
 
-test('construirDatos formats values, drops jurisdiction and bills 1; recalcularTotal follows edits', () => {
-  const conObjeto = construirDatos({ ...lect(), orden_objeto: ' RENTA  DE CAMA ALTA ' }, lect().lineas_orden[0], { consecutivo: 'C-1', hoy: { dia: 11, mes: 11, anio: 2026 }, objetoDeOrden: true });
-  assert.equal(conObjeto.objeto, 'RENTA DE CAMA ALTA');
-  const d = construirDatos(lect(), lect().lineas_orden[0], { consecutivo: 'C-1', hoy: { dia: 11, mes: 11, anio: 2026 } });
-  assert.equal('objeto' in d, false);
+test('construirDatos keeps the jurisdiction, bills 1 per line, supports several lines and a blank object; recalcularTotal follows edits', () => {
+  const hoy = { dia: 11, mes: 11, anio: 2026 };
+  const l2 = { linea: 13, descripcion: 'OTRO SERVICIO', cantidad: '10.00EA', precio: '2,760,000.00', total: '27,600,000.00' };
+  const d = construirDatos(lect(), [lect().lineas_orden[0], l2], { consecutivo: 'C-1', hoy });
   assert.equal(d.ordenCompleta, 'CPLTD-500000001A');
-  assert.equal(d.descripcion, 'SERVICIO DE TRANSPORTE VEHÍCULO TIPO: CAMION 600 RUTA: PDR-BAQ');
-  assert.deepEqual([d.cantidadOrden, d.cantidadFacturada, d.valorUnitario, d.valorTotal, d.fechaServicio, d.fechaActa], ['3,00', '1,00', '1.296.000', '1.296.000', '02/09/2026', '11/11/2026']);
-  assert.equal(recalcularTotal({ ...d, cantidadFacturada: '2,00' }).valorTotal, '2.592.000');
+  assert.equal(d.lineas.length, 2);
+  assert.equal(d.lineas[0].descripcion, 'SERVICIO DE TRANSPORTE VEHÍCULO TIPO: CAMION 600 RUTA: PDR-BAQ JURISDICCIÓN: CIÉNAGA');
+  assert.deepEqual(Object.values(d.lineas[0]).slice(0, 6), ['12', d.lineas[0].descripcion, '3,00', '1,00', '1.296.000', '1.296.000']);
+  assert.deepEqual([d.lineas[1].cantidadOrden, d.lineas[1].valorUnitario, d.lineas[1].valorTotal], ['10,00', '2.760.000', '2.760.000']);
+  assert.deepEqual([d.fechaServicio, d.fechaActa], ['02/09/2026', '11/11/2026']);
+  assert.equal('objeto' in d, false);
+  assert.equal(construirDatos(lect(), lect().lineas_orden[0], { consecutivo: 'C', hoy, objetoDeOrden: true }).objeto, ''); // DEIPO: blank
+  assert.equal(recalcularTotal({ ...d.lineas[0], cantidadFacturada: '2,00' }).valorTotal, '2.592.000');
 });
 
 test('leerSoporte sends the PDF as a document and returns the tool input', async () => {
@@ -49,7 +53,7 @@ test('procesarActa: consistent readings -> LISTA; disagreement or wrong remesa -
   const deps = (leer, descargar = async () => Buffer.from('%PDF')) => ({ descargar, leer, getConfig: async () => ({}), hoy: () => ({ dia: 11, mes: 11, anio: 2026 }) });
 
   assert.deepEqual(await procesarActa(a.id, deps(async () => lect())), { ok: true, estado: 'LISTA' });
-  assert.equal((await A.obtener(a.id)).datos.valorUnitario, '1.296.000');
+  assert.equal((await A.obtener(a.id)).datos.lineas[0].valorUnitario, '1.296.000');
 
   let n = 0; // second reading disagrees on the price
   const r = await procesarActa(b.id, deps(async () => { const l = lect(); if (n++) l.lineas_orden[0].precio = '1,296,001.00'; return l; }));

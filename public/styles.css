@@ -41,3 +41,5 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .split { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } .side { max-height: 40vh; } }
 dialog { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--card); color: var(--ink); } dialog::backdrop { background: #0008; }
 dialog .card { width: min(560px, 92vw); border: 0; } .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+.form fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 8px; margin: 0; } .form legend { font-weight: 600; padding: 0 6px; }

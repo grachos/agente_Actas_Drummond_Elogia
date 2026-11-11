@@ -39,7 +39,7 @@ Navegador (public/) ── /api/* (funciones Vercel, Node 22, 60 s) ──┬─
 | `db/*.sql` | Esquema (idempotente, se aplica al primer uso). |
 | `public/` | Front estático: `index.html`+`app.js` (aplicación), `config.html`+`config.js` (configuración). |
 | `scripts/` | `dev-server.mjs` (servidor local tipo Vercel), `migrate.mjs`, `seed-config.mjs`, `demo-acta.mjs`. |
-| `tests/` | 16 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
+| `tests/` | 18 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
 
 ## Flujo funcional y estados
 1. **Entrada**: lote de remesas + consecutivo (una línea `remesa;consecutivo`, o Excel con columnas `remesa` y `consecutivo`). Máx. 500 por lote. Par (remesa, consecutivo) único: los repetidos se omiten.
@@ -62,7 +62,7 @@ Escaneado (EPSON Scan, 200 ppp, **sin capa de texto**), 4–6 páginas, con sell
 | Documento | Cómo reconocerlo | Datos que se usan |
 |---|---|---|
 | Remesa terrestre de carga (3 copias) | «REMESA TERRESTRE DE CARGA», `No.` | número, fecha, placa |
-| Bill of Inland | «BILL OF INLAND» | `# BILL OF INLAND` (ej. `SMR025SEP26`), `CARGO CONSIGNMENT` (= remesa), `DATE OF DISPATCH`, placa, `PO. TRANSPORT` (ej. `500284486A L12` = orden + **línea 12**) |
+| Bill of Inland | «BILL OF INLAND» | `# BILL OF INLAND` (ej. `SMR025SEP26`), `CARGO CONSIGNMENT` (= remesa), `DATE OF DISPATCH`, placa, `PO. TRANSPORT` (ej. `500284486A L12` = orden + **línea 12**; puede listar **varias líneas**) |
 | Orden de salida Drummond (**opcional**) | «ORDEN DE SALIDA - …» | placa |
 | Transport Request Form (uno o varios) | «TRANSPORT REQUEST FORM» | solo informativo (número a veces ilegible) |
 | Orden de compra | «Purchase Order» **o** «Orden de Compra» | número con prefijo, líneas (n.º, descripción, cantidad, `PO Price`, `Extended Amt`) |
@@ -77,14 +77,14 @@ Muestras analizadas (datos reales solo en local): CPLTD `0101219771` (línea 8),
   - remesa leída y `CARGO CONSIGNMENT` = remesa pedida;
   - prefijo ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
   - orden del Bill = orden de compra **sin prefijo** ni ceros iniciales;
-  - la línea del Bill existe en la orden y `Quantity × PO Price = Extended Amt`;
+  - cada línea del Bill existe en la orden y `Quantity × PO Price = Extended Amt`;
   - placa igual en remesa, Bill (y orden de salida si viene), formato `AAA999`;
   - fecha de despacho válida (y coincidente con la de la remesa si ambas se leen); código Bill con forma `AAA999MMMAA`.
 - Dinero en **enteros** (nunca flotantes): la orden usa formato `4,536,000.00`, el acta `4.536.000` y cantidades `1,00`.
 - Se guarda siempre la lectura (JSON), las alertas, el dato aprobado y quién aprobó.
 
 ## Las 4 actas
-Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Dos variantes en la misma plantilla (`cfg.variante`): **DLTD** (CMLTD, CPLTD, EDLTD) y **DEI** (DEIPO). DEIPO (modelo `DEIPO_003`, 2026-11-11) difiere así: encabezado `SIGDEI-0331` / `03-02-2022`; empresa «DRUMMOND ENERGY INC.» (DEI); **contratista = Elogia** (ya no UT American Logistic); **el «Objeto del servicio» se toma de la orden de compra** (por acta, no fijo; la IA lee `orden_objeto`, si no se lee → alerta y hay que escribirlo, y no se puede aprobar sin él); cláusula 6 sin «a satisfacción»; «Manual de Contratistas»; bloque de 5 firmas (Contratista, Director/Superintendente, Bodega, Gerente de área, Country Manager). Una remesa = una acta también en DEIPO (el modelo traía 2 líneas agrupadas; no se replica). La cédula del representante es fija por tipo, como en el modelo. **Falta una orden DEIPO real** para confirmar de dónde sale exactamente el objeto.
+Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Dos variantes en la misma plantilla (`cfg.variante`): **DLTD** (CMLTD, CPLTD, EDLTD) y **DEI** (DEIPO). DEIPO (modelo `DEIPO_003`, 2026-11-11) difiere así: encabezado `SIGDEI-0331` / `03-02-2022`; empresa «DRUMMOND ENERGY INC.» (DEI); **contratista = Elogia** (ya no UT American Logistic); **el «Objeto del servicio» se deja en blanco** (campo por acta, opcional y editable en la revisión; no se lee de la orden; confirmado por el dueño 2026-11-11; la bandera de la config se llama `objetoDeOrden` por razones históricas); cláusula 6 sin «a satisfacción»; «Manual de Contratistas»; bloque de 5 firmas (Contratista, Director/Superintendente, Bodega, Gerente de área, Country Manager). Puede haber **más de una línea de la orden de compra** por remesa (el modelo DEIPO traía 2): el Bill lista varias líneas en `PO. TRANSPORT` (ej. `… L1 L2`) y el acta lleva **una fila por línea** (cantidad facturada 1 por línea; hasta 6). Vale para todos los tipos. La cédula del representante es fija por tipo, como en el modelo. **Falta una remesa DEIPO real** para confirmar cómo el Bill lista varias líneas.
 
 | Tipo | Empresa | Contrato (fijo) | Sede (fija, por confirmar) |
 |---|---|---|---|
@@ -100,10 +100,10 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 |---|---|
 | Consecutivo | lo da el usuario (Excel o pantalla) |
 | Orden de compra | página de la orden (con prefijo) |
-| Línea / descripción | línea de la orden indicada en el Bill; descripción **tal cual**, sin la jurisdicción |
+| Línea(s) / descripción | línea(s) de la orden indicadas en el Bill; descripción **tal cual, incluida la «JURISDICCIÓN: …»** (confirmado 2026-11-11; corrige la decisión anterior de omitirla) |
 | Cantidad de la orden | `Quantity` impresa (`3.00EA` → `3,00`) |
 | Valor unitario | `PO Price` impreso |
-| Cantidad facturada | **1 por remesa**; solo 2, 3… si el valor impreso fuese el doble, triple… del valor del viaje |
+| Cantidad facturada | **1 por línea de la remesa**; solo 2, 3… si el valor impreso fuese el doble, triple… del valor del viaje |
 | Valor total facturado | cantidad facturada × valor unitario (se recalcula al editar) |
 | Fecha de inicio y de terminación | la misma: `DATE OF DISPATCH` del Bill |
 | Fecha del acta y cierre en letras | la misma: **hoy** (America/Bogotá), editable |
@@ -127,7 +127,7 @@ Correcciones a los modelos ya aplicadas en la plantilla: sin el «JUN(» suelto;
 ## Desarrollo local
 ```bash
 npm install
-npm test                                   # 16 pruebas (las de BD con TEST_DATABASE_URL=mysql://...)
+npm test                                   # 18 pruebas (las de BD con TEST_DATABASE_URL=mysql://...)
 ACTAS_MOCK=1 DATABASE_URL=mysql://... TOKEN_SECRET=x WAF_CHROME_PATH=/ruta/chrome node scripts/dev-server.mjs
 ```
 Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtures/lecturas/<remesa>.json` y `fixtures/config.local.json` (cargar con `scripts/seed-config.mjs`) en vez de Silogtran/IA; login de prueba: cualquier usuario con clave `demo`. Ignorado en Vercel.
@@ -138,7 +138,7 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 
 ## Pendientes y siguientes pasos
 1. Apagar «Vercel Authentication», subir logo y firma, primer lote real de 5–10 remesas.
-2. Probar una **orden DEIPO real** (de dónde sale el objeto) y la lectura del campo `orden_objeto`.
+2. Probar una **remesa DEIPO real** (varias líneas en el Bill, objeto en blanco).
 3. **Correo Microsoft 365** (I7): Graph `sendMail`, app de Azure (`Mail.Send`) y buzón remitente; envío individual o por bloques (≈20 MB por correo), registro de envíos.
 4. Revisar con el dueño qué hay en Silogtran para `0101219775` y si re-subir un adjunto cambia el sufijo.
 5. Si hace falta: PDF.js como visor, tope por lote, manual de uso, endurecer el acceso remoto a la BD.
@@ -151,3 +151,4 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 
 ## Decisiones del dueño (resumen con fecha)
 - 2026-11-10/11: el prefijo de la orden decide el tipo; una acta por remesa; salida en PDF; consecutivo por Excel o pantalla; nombres fijos por tipo; contrato fijo por tipo; planeador y AFE = N/A; cantidad facturada = 1; fecha de servicio = despacho del Bill; fecha del acta = hoy; descripción tal cual; sufijo del soporte siempre `_57`; IA = Anthropic; Vercel + base MySQL de Hostinger; cada usuario entra con su cuenta de Silogtran; 4–6 usuarios, lotes de 100–300; correo Microsoft 365; nombre del archivo `<TIPO>_<remesa>.pdf`; revisión en una sola pantalla con vista previa en PDF.
+- 2026-11-11 (prueba en la app): la **descripción incluye la jurisdicción**; en DEIPO el **objeto del servicio queda en blanco**; una remesa puede tener **varias líneas** de la orden (una fila por línea en el acta).
