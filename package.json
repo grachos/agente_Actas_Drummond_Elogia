@@ -1,0 +1,20 @@
+{
+  "name": "agente-actas-drummond-elogia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Genera actas de entrega a partir de remesas de Silogtran.",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\"",
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@sparticuz/chromium": "^153.0.0",
+    "cheerio": "^1.2.0",
+    "mysql2": "^3.15.0",
+    "pdf-lib": "^1.17.1",
+    "puppeteer-core": "^25.16.0"
+  }
+}
