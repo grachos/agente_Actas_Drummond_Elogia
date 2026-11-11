@@ -69,7 +69,7 @@ Todos los PDF traen la página de la orden de compra; **su prefijo decide el tip
   - remesa leída (remesa y `CARGO CONSIGNMENT`) = remesa solicitada = nombre del archivo;
   - prefijo de la orden ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
   - la orden del Bill of Inland coincide con la de la página de orden de compra **comparando sin prefijo** (Bill `0100443504 L1` ↔ `CMLTD-0100443504`); el TRF solo informativo (puede perder ceros);
-  - la línea indicada existe en la página, **total ÷ precio unitario es un entero** y coincide con la cantidad impresa (detecta dígitos mal leídos);
+  - la línea indicada existe en la página, **`Extended Amt` ÷ `PO Price` es un entero** ≤ `Quantity` (detecta dígitos mal leídos);
   - placa igual en remesa y Bill of Inland (y en la orden de salida si viene); formato `AAA999`; **no** validar el conductor;
   - fechas válidas y coherentes entre documentos; código Bill of Inland con forma `AAA999MMMAA`.
 - Números: la orden usa formato anglosajón (`4,536,000.00`); el acta usa formato colombiano (`4.536.000`, cantidades `1,00`). Convertir con enteros, nunca con flotantes.
@@ -94,10 +94,10 @@ Modelos entregados por el dueño en Word (ya diligenciados; no están en el repo
 | Número de consecutivo (ej. `CPLTD-053-26`) | Excel o pantalla |
 | Orden de compra N° | página de orden de compra |
 | Línea, descripción, cantidad de la orden, valor unitario | línea de la orden indicada en el Bill of Inland |
-| Cantidad de la orden | la cantidad **impresa en la línea de la orden** (ej. `4.00EA` → `4,00`); validar que total de la línea ÷ precio unitario = esa cantidad (CPLTD L7: 18,260,868 ÷ 4,565,217 = 4) |
+| Cantidad de la orden | `Quantity` impresa en la línea de la orden (ej. `4.00EA` → `4,00`) |
 | Valor unitario | el `PO Price` impreso en la línea (ej. 4.565.217), nunca recalculado a mano |
-| Cantidad facturada (**N**) | 1, 2, 3… = cuántas veces el valor del viaje cubre esta remesa (regla del dueño 2026-11-11: si «el valor» es el doble del unitario → 2). **Origen de «el valor» sin definir** (ver preguntas); mientras tanto 1 por defecto, editable en la revisión, y nunca mayor que la cantidad de la orden |
-| Valor total facturado | **N × valor unitario** (CPLTD L7 con N=2 → 9.130.434) |
+| Cantidad facturada | **`Extended Amt` de la línea ÷ `PO Price`** (regla del dueño 2026-11-11; ej. 3.913.044 ÷ 1.956.522 = 2). Debe ser entero exacto y ≤ cantidad de la orden; si no, revisión. Coincide con el modelo DEIPO (orden 22, facturada 20). En las muestras CPLTD/CMLTD ambas cantidades coinciden |
+| Valor total facturado | el `Extended Amt` impreso de la línea (= cantidad facturada × valor unitario) |
 | Fecha de inicio **y** de terminación de los servicios | la misma: `DATE OF DISPATCH` del Bill of Inland (día/mes/año), confirmado por el dueño 2026-11-11 |
 | Sede | fija por tipo (CMLTD/EDLTD/DEIPO → Mina; CPLTD → Puerto), validada contra el encabezado de la orden (**confirmar**) |
 | Documentos adjuntos | `<código Bill of Inland> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
@@ -134,8 +134,7 @@ Descripción de la línea en el acta: **tal cual** como aparece en la orden (con
 `SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. **Cantidad facturada**: el dueño descartó (2026-11-11) que salga del flete de Silogtran, de una columna del Excel o de digitarla. Falta saber de qué dato del PDF o del lote se deduce (hipótesis: nº de remesas del lote que comparten orden y línea). Pedirle un ejemplo real con cantidad facturada = 2 (qué remesas y qué documentos tenía). Mientras tanto: 1 por defecto, editable en la revisión.
-2. Contrato (DCI): ¿se lee de la orden (`DCI-2410B` en CMLTD) o es fijo por tipo (`DCI-2418` en el modelo)? AFE: ¿siempre `N/A`?
-3. Sede: ¿fija por tipo (CPLTD = Puerto, los demás = Mina)?
-4. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
-5. Faltan muestras reales de DEIPO y EDLTD y una poco legible.
+1. Contrato (DCI): ¿se lee de la orden (`DCI-2410B` en CMLTD) o es fijo por tipo (`DCI-2418` en el modelo)? AFE: ¿siempre `N/A`?
+2. Sede: ¿fija por tipo (CPLTD = Puerto, los demás = Mina)?
+3. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
+4. Faltan muestras reales de DEIPO y EDLTD y una poco legible.
