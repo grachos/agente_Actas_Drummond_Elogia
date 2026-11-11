@@ -24,7 +24,7 @@ Repo público con el acceso a Silogtran ya resuelto. **Portar tal cual** (no ree
 Instancia: `https://construproyec.colombiasoftware.net` (`SILOG_BASE_URL`).
 
 ## Stack (por defecto; pendiente de confirmar)
-**Propuesto 2026-11-11 (confirmar): Render** (servicio web en Docker + Supabase). Motivos: lotes de 100–300 remesas (sin el límite de 60 s de Vercel), Chromium para el WAF y **LibreOffice** para convertir las actas Word a PDF, que en Vercel no se puede instalar. Node 22 ESM; Supabase (Postgres + Storage privado); front estático en `public/` (HTML/JS sin framework); `pdf-lib` para unir PDF; IA de visión: **Anthropic (Claude API)**, confirmado por el dueño; modelo por variable de entorno (`ANTHROPIC_API_KEY`, `IA_MODELO`). Correo: **Microsoft 365** vía Microsoft Graph (`sendMail`) con una app registrada en Azure (permiso `Mail.Send` con consentimiento del administrador) y un buzón remitente; el SMTP básico suele estar deshabilitado.
+**Decidido 2026-11-11: Vercel** (funciones serverless, 60 s) + **BD MySQL en Hostinger** (la del dueño; `DATABASE_URL`; requiere habilitar acceso remoto y permitir conexiones desde Vercel, que no tiene IP fija). Como Vercel no permite LibreOffice, las actas se hacen con **plantillas HTML renderizadas a PDF con Chromium** (`@sparticuz/chromium`, el mismo del WAF), fieles a los modelos Word. **No se guardan PDF**: el soporte se vuelve a bajar de la URL pública y el acta se regenera desde los datos aprobados; en la BD solo van datos (JSON). La IA lee el **PDF directo** (la API de Anthropic acepta PDF escaneados; sin rasterizar). Node 22 ESM; front estático en `public/`; `pdf-lib` para unir PDF; IA: **Anthropic**, modelo por `IA_MODELO`. Correo: **Microsoft 365** vía Microsoft Graph (`sendMail`) con app de Azure (`Mail.Send`) y buzón remitente.
 
 ## Flujo funcional
 1. Entrada: remesas + **consecutivo del acta** por cada una, por Excel (columnas `remesa`, `consecutivo`) o digitadas en la pantalla.
@@ -134,10 +134,13 @@ Descripción de la línea en el acta: **tal cual** como aparece en la orden (con
 `SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Decisiones de operación (2026-11-11)
+- **Cada usuario entra con su propia cuenta de Silogtran** (se valida contra Silogtran; credenciales cifradas con `ENCRYPTION_KEY`, patrón M1 de la referencia) y cada acta/lote guarda **qué usuario** la hizo. Cada usuario usa su sesión de Silogtran para sus remesas.
+- **PLANEADOR y AFE = `N/A` en los 4 tipos** (en el modelo DEIPO el planeador era otra persona; se pasa a N/A por instrucción del dueño).
+- **Pendiente, manejado así por ahora; recordárselo al dueño:** (a) sede fija por tipo (CPLTD = Puerto, los demás = Mina); (b) muestras de DEIPO y EDLTD y una poco legible.
 - Usuarios: 4–6 personas, cada una con su usuario. Lotes: 100–300 remesas. Correo: Microsoft 365. Nombre del archivo final: `<TIPO>_<remesa>.pdf` (ej. `CPLTD_0101219749.pdf`).
 - **Entrega pedida para hoy (2026-11-11):** alcance mínimo viable = descargar soporte → leer → revisión → acta PDF → PDF final descargable por remesa y por lote (I0–I6 simplificados). El correo (I7) puede ir después si no alcanza.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. Hosting: ¿Render (propuesto) o Vercel? Credenciales/proyectos que se necesitan para desplegar: usuario de Silogtran, proyecto Supabase, `ANTHROPIC_API_KEY`, app de Azure para el correo y buzón remitente.
-2. Sede: ¿fija por tipo (CPLTD = Puerto, los demás = Mina)?
-3. Faltan muestras reales de DEIPO y EDLTD (y una poco legible) para medir la lectura.
+1. Hostinger: motor y datos de conexión (host, puerto, base, usuario; clave solo como variable de entorno) y si el acceso remoto está habilitado para cualquier origen.
+2. Credenciales para correo (app de Azure y buzón remitente), cuando se llegue a I7.
+3. Recordatorio pendiente: sede fija por tipo y muestras DEIPO/EDLTD.
