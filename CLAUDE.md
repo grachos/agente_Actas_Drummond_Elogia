@@ -134,7 +134,7 @@ Descripción de la línea en el acta: **tal cual** como aparece en la orden (con
 `SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. **Cantidad facturada**: ¿de dónde sale «el valor» que es 1, 2 o 3 veces el valor unitario? (¿valor del flete de la remesa en Silogtran, una columna del Excel, o se digita en la revisión?)
+1. **Cantidad facturada**: el dueño descartó (2026-11-11) que salga del flete de Silogtran, de una columna del Excel o de digitarla. Falta saber de qué dato del PDF o del lote se deduce (hipótesis: nº de remesas del lote que comparten orden y línea). Pedirle un ejemplo real con cantidad facturada = 2 (qué remesas y qué documentos tenía). Mientras tanto: 1 por defecto, editable en la revisión.
 2. Contrato (DCI): ¿se lee de la orden (`DCI-2410B` en CMLTD) o es fijo por tipo (`DCI-2418` en el modelo)? AFE: ¿siempre `N/A`?
 3. Sede: ¿fija por tipo (CPLTD = Puerto, los demás = Mina)?
 4. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
