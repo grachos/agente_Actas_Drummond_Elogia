@@ -21,8 +21,8 @@ async function ensureSchema() {
     const dir = new URL('../db/', import.meta.url);
     for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) await cx.query(readFileSync(new URL(f, dir), 'utf8'));
     if (process.env.ACTAS_SEED) {
-      const [[{ n }]] = await cx.query('SELECT COUNT(*) AS n FROM acta_tipos');
-      if (!n) for (const [tipo, cfg] of Object.entries(JSON.parse(process.env.ACTAS_SEED))) await cx.query('INSERT IGNORE INTO acta_tipos (tipo, config) VALUES (?, ?)', [tipo, JSON.stringify(cfg)]);
+      // adds the types that are missing; never overwrites values already edited in the DB
+      for (const [tipo, cfg] of Object.entries(JSON.parse(process.env.ACTAS_SEED))) await cx.query('INSERT IGNORE INTO acta_tipos (tipo, config) VALUES (?, ?)', [tipo, JSON.stringify(cfg)]);
     }
   } finally {
     await cx.end().catch(() => {});

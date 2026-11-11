@@ -109,7 +109,7 @@ $('#zipBtn').addEventListener('click', async () => {
 });
 
 /* ---------- revisión ---------- */
-const CAMPOS = [['consecutivo', 'Consecutivo del acta'], ['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación'], ['linea', 'Línea'], ['descripcion', 'Descripción', 'area'], ['cantidadOrden', 'Cantidad de la orden'], ['cantidadFacturada', 'Cantidad facturada'], ['valorUnitario', 'Valor unitario'], ['valorTotal', 'Valor total facturado', 'ro'], ['adjuntos', 'Documentos adjuntos', 'area']];
+const CAMPOS = [['consecutivo', 'Consecutivo del acta'], ['objeto', 'Objeto del servicio (de la orden de compra)', 'area'], ['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación'], ['linea', 'Línea'], ['descripcion', 'Descripción', 'area'], ['cantidadOrden', 'Cantidad de la orden'], ['cantidadFacturada', 'Cantidad facturada'], ['valorUnitario', 'Valor unitario'], ['valorTotal', 'Valor total facturado', 'ro'], ['adjuntos', 'Documentos adjuntos', 'area']];
 const PAGINA = (campo, p = {}) => (/^(remesa|placa_remesa)/.test(campo) ? p.remesa : /^(bill|placa)/.test(campo) ? p.bill : /^(orden_numero|lineas_orden|linea)/.test(campo) ? p.orden : null);
 
 async function abrir(id, { pagina } = {}) {
@@ -132,7 +132,7 @@ async function abrir(id, { pagina } = {}) {
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === st.tab));
     if (st.tab === 'acta') { pane.innerHTML = `<p class="muted small">Así saldrá el acta en el PDF (las firmas van en blanco). Se genera al abrir esta pestaña…</p><iframe title="Vista previa del acta" src="/api/actas/vistapdf?id=${id}&t=${Date.now()}#view=FitH&toolbar=1"></iframe>`; return; }
     pane.innerHTML = (acta.alertas.length ? `<ul class="alerts">${acta.alertas.map((a, i) => `<li data-i="${i}" title="Ver en el soporte">⚠ ${esc(a.mensaje)}</li>`).join('')}</ul>` : '<p class="muted">Sin alertas: las dos lecturas coinciden y las validaciones pasaron.</p>') +
-      `<div class="form" id="form">${CAMPOS.map(([k, t, tipo]) => `<label class="${[...malos].some((m) => k.toLowerCase().includes(m.replace(/^(bill_|orden_)/, '')) ) ? 'bad' : ''}">${t}${tipo === 'area' ? `<textarea name="${k}" rows="3">${esc(acta.datos[k])}</textarea>` : `<input name="${k}" value="${esc(acta.datos[k])}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`).join('')}</div>`;
+      `<div class="form" id="form">${CAMPOS.filter(([k]) => k !== 'objeto' || 'objeto' in acta.datos).map(([k, t, tipo]) => `<label class="${[...malos].some((m) => k.toLowerCase().includes(m.replace(/^(bill_|orden_)/, '')) ) ? 'bad' : ''}">${t}${tipo === 'area' ? `<textarea name="${k}" rows="3">${esc(acta.datos[k])}</textarea>` : `<input name="${k}" value="${esc(acta.datos[k])}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`).join('')}</div>`;
     pane.querySelectorAll('.alerts li').forEach((li) => li.addEventListener('click', () => { const p = PAGINA(acta.alertas[li.dataset.i].campo, pg); if (p) $('#pdfv').src = `/api/actas/soporte?id=${id}&t=${Date.now()}#page=${p}&view=FitH`; }));
   };
   const cambiado = () => [...document.querySelectorAll('#form [name]')].some((i) => i.name !== 'valorTotal' && String(acta.datos[i.name] ?? '') !== i.value);

@@ -7,8 +7,14 @@ const CAMPOS = { consecutivo: 50, ordenCompleta: 40, linea: 4, descripcion: 400,
 const DMY = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 const bad = (m) => { throw new ApiError('DATOS_INVALIDOS', m, { status: 400 }); };
 
-export function sanearDatos(input) {
+export function sanearDatos(input, { objetoObligatorio = false } = {}) {
   const d = {};
+  if (input?.objeto !== undefined || objetoObligatorio) {
+    const o = String(input?.objeto ?? '').replace(/\s+/g, ' ').trim();
+    if (objetoObligatorio && !o) bad('Escribe el objeto del servicio (se toma de la orden de compra).');
+    if (o.length > 300) bad('El objeto del servicio es demasiado largo.');
+    d.objeto = o;
+  }
   for (const [k, max] of Object.entries(CAMPOS)) {
     const v = String(input?.[k] ?? '').replace(/\s+/g, ' ').trim();
     if (!v) bad(`El campo «${k}» no puede estar vacío.`);

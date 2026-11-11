@@ -5,7 +5,7 @@ import { ApiError } from '../../src/http/errors.js';
 import { requireSession } from '../../src/http/session.js';
 import { listarConfig, getConfigTipo, guardarConfigTipo, guardarImagen } from '../../src/store/config.js';
 
-const EDITABLES = ['contratista', 'objeto', 'empresaNombre', 'empresaSigla', 'supervisor', 'planeador', 'comprador', 'contrato', 'afe', 'sede', 'repContratista', 'cedulaContratista', 'repDrummond', 'nombreFirmaContratista'];
+const EDITABLES = ['contratista', 'objeto', 'empresaNombre', 'empresaSigla', 'supervisor', 'planeador', 'comprador', 'contrato', 'afe', 'sede', 'repContratista', 'cedulaContratista', 'repDrummond', 'nombreFirmaContratista', 'firmaDirector', 'firmaGerente', 'firmaCountry', 'sigCodigo', 'sigFecha'];
 
 async function admin(req) {
   await requireSession(req);
@@ -22,7 +22,7 @@ export default route({
     if (!/^[A-Z]{5}$/.test(String(tipo))) throw new ApiError('PARAM_INVALID', 'Tipo inválido.', { status: 400 });
     const actual = await getConfigTipo(tipo).catch(() => ({}));
     const nuevo = { ...actual }; delete nuevo.logo; delete nuevo.firma;
-    for (const k of EDITABLES) if (valores?.[k] !== undefined) { const v = String(valores[k]).trim(); if (!v || v.length > 200) throw new ApiError('PARAM_INVALID', `Valor inválido en «${k}».`, { status: 400 }); nuevo[k] = v; }
+    for (const k of EDITABLES) if (valores?.[k] !== undefined && !(k === 'objeto' && actual.objetoDeOrden)) { const v = String(valores[k]).trim(); if (!v || v.length > 200) throw new ApiError('PARAM_INVALID', `Valor inválido en «${k}».`, { status: 400 }); nuevo[k] = v; }
     nuevo.tipo = tipo;
     await guardarConfigTipo(tipo, nuevo);
     res.status(200).json({ ok: true });

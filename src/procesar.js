@@ -37,8 +37,8 @@ async function trabajar(id, deps) {
     const alertas = [...v.errores, ...comparar(l1, l2).map((campo) => ({ campo, mensaje: `Las dos lecturas de la IA difieren en «${campo}».` }))];
     let datos = null;
     if (v.linea && v.tipo) {
-      await deps.getConfig(v.tipo); // fail early if the type has no fixed values loaded
-      try { datos = construirDatos(l1, v.linea, { consecutivo: acta.consecutivo, hoy: deps.hoy() }); } catch { alertas.push({ campo: 'datos', mensaje: 'No se pudieron armar los datos del acta; complétalos a mano.' }); }
+      const cfg = await deps.getConfig(v.tipo); // fail early if the type has no fixed values loaded
+      try { datos = construirDatos(l1, v.linea, { consecutivo: acta.consecutivo, hoy: deps.hoy(), objetoDeOrden: Boolean(cfg?.objetoDeOrden) }); if (cfg?.objetoDeOrden && !datos.objeto) alertas.push({ campo: 'orden_objeto', mensaje: 'No se pudo leer el objeto del servicio de la orden; escríbelo a mano.' }); } catch { alertas.push({ campo: 'datos', mensaje: 'No se pudieron armar los datos del acta; complétalos a mano.' }); }
     }
     await A.guardarResultado(id, { tipo: v.tipo, estado: alertas.length || !datos ? 'REVISAR' : 'LISTA', lectura: { ...l1, _segunda_lectura: l2 }, alertas, datos });
     return { ok: true, estado: alertas.length || !datos ? 'REVISAR' : 'LISTA' };

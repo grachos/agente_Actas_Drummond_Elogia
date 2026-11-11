@@ -26,4 +26,4 @@ ACTAS_MOCK=1 node scripts/dev-server.mjs   # servidor local con datos de ejemplo
 Vercel conectado a este repo (cada push a la rama de producción despliega). Variables requeridas: ver `.env.example`. La primera vez, entrar a `/config.html` (clave de administrador) para subir el logo, la firma y revisar los valores fijos de cada tipo.
 
 ## Estado
-Funcionando en producción hasta la lectura con IA y el PDF; pendientes: acta DEIPO, correo Microsoft 365 y primer lote real. Ver «Pendientes» en `CLAUDE.md`.
+Funcionando en producción hasta la lectura con IA y el PDF; pendientes: probar una orden DEIPO real, correo Microsoft 365 y primer lote real. Ver «Pendientes» en `CLAUDE.md`.

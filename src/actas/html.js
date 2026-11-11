@@ -14,12 +14,12 @@ export function headerTemplate(cfg) {
     <tr>
       <td rowspan="4" style="width:34%;border:1px solid #000;padding:4px;text-align:center"><img src="${cfg.logo}" style="height:15mm"></td>
       <td rowspan="2" style="border:1px solid #000;text-align:center;font-weight:bold;font-size:11px;font-family:Arial,sans-serif">SISTEMA INTEGRADO DE GESTIÓN</td>
-      <td style="width:22%;border:1px solid #000;text-align:center;font-family:Arial,sans-serif">SIG-1639</td>
+      <td style="width:22%;border:1px solid #000;text-align:center;font-family:Arial,sans-serif">${esc(cfg.sigCodigo || 'SIG-1639')}</td>
     </tr>
     <tr><td style="border:1px solid #000;text-align:center;font-family:Arial,sans-serif">Versión 4</td></tr>
     <tr>
       <td rowspan="2" style="border:1px solid #000;text-align:center;font-weight:bold;font-size:11px;font-family:Arial,sans-serif">ACTA DE RECIBO DE SERVICIOS</td>
-      <td style="border:1px solid #000;text-align:center;font-family:Arial,sans-serif">Abril 2017</td>
+      <td style="border:1px solid #000;text-align:center;font-family:Arial,sans-serif">${esc(cfg.sigFecha || 'Abril 2017')}</td>
     </tr>
     <tr><td style="border:1px solid #000;text-align:center;font-family:Arial,sans-serif">Página <span class="pageNumber"></span> de <span class="totalPages"></span></td></tr>
   </table></div>`;
@@ -31,6 +31,7 @@ const row = (k, v, sub = '') =>
 export function actaHtml(cfg, d) {
   const sigla = cfg.empresaSigla;
   const mes = MESES[d.cierre.mes - 1];
+  const dei = cfg.variante === 'DEI'; // Drummond Energy Inc. variant (DEIPO): own wording and a 5-signature block
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
   @page { size: Letter; margin: ${HEADER_HEIGHT_MM + 6}mm 18mm 14mm 18mm; }
   body { font-family: ${FONT}; font-size: 10.5pt; line-height: 1.25; margin: 0; color: #000; }
@@ -62,7 +63,7 @@ export function actaHtml(cfg, d) {
   <table class="f">
     ${row('CONTRATISTA / PROVEEDOR:', cfg.contratista)}
     ${row('NUMERO DE CONSECUTIVO DEL ACTA', d.consecutivo, '(Numeración interna del Contratista / Proveedor)')}
-    <tr><td colspan="2"><b>OBJETO DEL SERVICIO:</b><br><b>${esc(cfg.objeto)}</b></td></tr>
+    <tr><td colspan="2"><b>OBJETO DEL SERVICIO:</b><br><b>${esc(cfg.objetoDeOrden ? d.objeto : cfg.objeto)}</b></td></tr>
   </table>
   <table class="f">
     ${row('SUPERVISOR Y / O SOLICITANTE:', cfg.supervisor)}
@@ -87,21 +88,27 @@ export function actaHtml(cfg, d) {
     <li>Se encuentra a paz y salvo con todos sus subcontratistas.</li>
     <li>Todos los compromisos de el CONTRATISTA/PROVEEDOR de mantener indemne a ${sigla}, así como las garantías establecidas a favor de ${sigla} se mantendrán vigentes aún después de la terminación del Contrato por el término establecido en cada caso.</li>
     <li>El CONTRATISTA/PROVEEDOR declara a ${sigla} a paz y salvo y libre de toda posterior reclamación en relación al desarrollo del Servicio solicitado a través de la Orden de Compra arriba relacionada. En consecuencia, el CONTRATISTA/PROVEEDOR, sucesores, socios o causahabientes no podrán iniciar o proseguir acción contra ${sigla} derivado del Servicio prestado a ${sigla} en cumplimiento de tal Orden de Compra.</li>
-    <li>Los trabajos / Servicios fueron terminados y son recibidos a satisfacción mediante esta acta.</li>
+    <li>Los trabajos / Servicios fueron terminados y son recibidos ${dei ? '' : 'a satisfacción '}mediante esta acta.</li>
   </ol>
   <p style="margin-bottom:0">Comentarios Adicionales:</p><div class="ruled"></div><div class="ruled" style="margin-bottom:10px"></div>
   <p><b>Documentos adjuntos requeridos como parte de las obligaciones del CONTRATISTA/PROVEEDOR:</b><br>
   (ej: mails internos, permisos ambientales, certificaciones laborales, paz y salvos, otros)<br>
   ${esc(d.adjuntos)}</p>
-  <p>Con esta acta se deja constancia adicionalmente sobre el cumplimiento por parte del CONTRATISTA/PROVEEDOR y en especial: <b>Es obligación del CONTRATISTA/PROVEEDOR asignado por la presente Orden de Compra, dar cumplimiento a lo establecido en el Manual Integral para Control y Seguimiento de Contratistas, sobre los “Requisitos de Gestión Ambiental Y Seguridad Industrial”.</b></p>
+  <p>Con esta acta se deja constancia adicionalmente sobre el cumplimiento por parte del CONTRATISTA/PROVEEDOR y en especial: <b>Es obligación del CONTRATISTA/PROVEEDOR asignado por la presente Orden de Compra, dar cumplimiento a lo establecido en el Manual ${dei ? 'de Contratistas' : 'Integral para Control y Seguimiento de Contratistas'}, sobre los “Requisitos de Gestión Ambiental Y Seguridad Industrial”.</b></p>
   <div class="keep">
   <p style="margin-top:14px">No siendo otro el motivo de la presente acta, se procede a entregar y recibir a satisfacción los trabajos a los <b>${d.cierre.dia} días</b> del mes de <b>${mes}</b> del año <b>${d.cierre.anio}</b>.</p>
-  <table class="sig">
+  ${dei ? `<table class="sig">
+    <tr><td><div class="box">${cfg.firma ? `<img class="firma" src="${cfg.firma}">` : ''}</div><div class="line">(Firma entrega del trabajo)<br><b>CONTRATISTA</b><br>Nombre: <b>${esc(cfg.nombreFirmaContratista)}</b></div></td>
+        <td><div class="box"></div><div class="line">(Firma recibo del trabajo)<br><b>DIRECTOR/SUPERINT./SUP. LIDER/COORD.</b><br>Nombre: <b>${esc(cfg.firmaDirector)}</b></div></td>
+        <td><div class="box"></div><div class="line">(Firma y Sello de Bodega)</div></td></tr>
+    <tr><td><div class="box"></div><div class="line">(Firma recibo del trabajo)<br><b>GERENTE DE ÁREA</b><br>Nombre: <b>${esc(cfg.firmaGerente)}</b></div></td>
+        <td><div class="box"></div><div class="line">(Firma aprobación servicio)<br><b>COUNTRY MANAGER</b><br>Nombre: <b>${esc(cfg.firmaCountry)}</b></div></td><td></td></tr>
+  </table></div>` : `<table class="sig">
     <tr><td><div class="box">${cfg.firma ? `<img class="firma" src="${cfg.firma}">` : ''}</div><div class="line">(Firma entrega del trabajo)<br><b>CONTRATISTA</b><br>NOMBRE: <b>${esc(cfg.nombreFirmaContratista)}</b></div></td>
         <td><div class="box"></div><div class="line">(Firma recibo del trabajo)<br><b>SUPERVISOR Y/O SOLICITANTE ${sigla}.</b><br>NOMBRE:</div></td><td></td></tr>
     <tr><td><div class="box"></div><div class="line">(Firma recibo del trabajo)<br><b>SUPERVISOR LIDER DRUMMOND LTD.</b></div></td>
         <td><div class="box"></div><div class="line">(Firma aprobación servicio – si aplica)<br><b>SUPERINTENDENTE / GERENTE AREA ${sigla}.</b></div></td>
         <td><div class="box"></div><div class="line">(Firma y Sello de Bodega)</div></td></tr>
-  </table></div>
+  </table></div>`}
   </body></html>`;
 }

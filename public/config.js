@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const CAMPOS = [['contratista', 'Contratista'], ['objeto', 'Objeto del servicio'], ['empresaNombre', 'Empresa (en el texto)'], ['empresaSigla', 'Sigla de la empresa'], ['contrato', 'Contrato (DCI)'], ['afe', 'AFE'], ['sede', 'Sede'], ['supervisor', 'Supervisor / solicitante'], ['planeador', 'Planeador'], ['comprador', 'Comprador'], ['repContratista', 'Representante del contratista'], ['cedulaContratista', 'Cédula del representante'], ['repDrummond', 'Representante de Drummond'], ['nombreFirmaContratista', 'Nombre bajo la firma']];
+const CAMPOS = [['contratista', 'Contratista'], ['objeto', 'Objeto del servicio'], ['empresaNombre', 'Empresa (en el texto)'], ['empresaSigla', 'Sigla de la empresa'], ['contrato', 'Contrato (DCI)'], ['afe', 'AFE'], ['sede', 'Sede'], ['supervisor', 'Supervisor / solicitante'], ['planeador', 'Planeador'], ['comprador', 'Comprador'], ['repContratista', 'Representante del contratista'], ['cedulaContratista', 'Cédula del representante'], ['repDrummond', 'Representante de Drummond'], ['nombreFirmaContratista', 'Nombre bajo la firma'], ['firmaDirector', 'Director/Superintendente (solo DEIPO)'], ['firmaGerente', 'Gerente de área (solo DEIPO)'], ['firmaCountry', 'Country Manager (solo DEIPO)'], ['sigCodigo', 'Código del formato (encabezado)'], ['sigFecha', 'Fecha del formato (encabezado)']];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const h = () => ({ 'content-type': 'application/json', 'x-admin-key': $('#clave').value });
 async function api(path, body) {
@@ -13,7 +13,7 @@ async function cargar() {
   try {
     const c = await api('/api/admin/config');
     $('#imgs').hidden = false; $('#logoSt').textContent = c.logo ? '✓ Logo cargado' : 'Sin logo'; $('#firmaSt').textContent = c.firma ? '✓ Firma cargada' : 'Sin firma';
-    $('#tipos').innerHTML = c.tipos.map((t) => `<form class="card" style="width:auto" data-tipo="${t.tipo}"><h2>${t.tipo}</h2>${CAMPOS.map(([k, l]) => `<label>${l}<input name="${k}" value="${esc(t[k])}"></label>`).join('')}<div class="row"><span class="muted small"></span><button class="primary">Guardar ${t.tipo}</button></div></form>`).join('') || '<p class="muted">No hay tipos cargados todavía.</p>';
+    $('#tipos').innerHTML = c.tipos.map((t) => `<form class="card" style="width:auto" data-tipo="${t.tipo}"><h2>${t.tipo}</h2>${CAMPOS.filter(([k]) => (t[k] !== undefined || !/^(firma(Director|Gerente|Country))$/.test(k)) && !(k === 'objeto' && t.objetoDeOrden)).map(([k, l]) => `<label>${l}<input name="${k}" value="${esc(t[k])}"></label>`).join('')}<div class="row"><span class="muted small"></span><button class="primary">Guardar ${t.tipo}</button></div></form>`).join('') || '<p class="muted">No hay tipos cargados todavía.</p>';
   } catch (e) { $('#msg').textContent = e.message; }
 }
 $('#cargar').addEventListener('click', cargar);

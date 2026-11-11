@@ -12,7 +12,10 @@ const lect = () => ({
 });
 
 test('construirDatos formats values, drops jurisdiction and bills 1; recalcularTotal follows edits', () => {
+  const conObjeto = construirDatos({ ...lect(), orden_objeto: ' RENTA  DE CAMA ALTA ' }, lect().lineas_orden[0], { consecutivo: 'C-1', hoy: { dia: 11, mes: 11, anio: 2026 }, objetoDeOrden: true });
+  assert.equal(conObjeto.objeto, 'RENTA DE CAMA ALTA');
   const d = construirDatos(lect(), lect().lineas_orden[0], { consecutivo: 'C-1', hoy: { dia: 11, mes: 11, anio: 2026 } });
+  assert.equal('objeto' in d, false);
   assert.equal(d.ordenCompleta, 'CPLTD-500000001A');
   assert.equal(d.descripcion, 'SERVICIO DE TRANSPORTE VEHÍCULO TIPO: CAMION 600 RUTA: PDR-BAQ');
   assert.deepEqual([d.cantidadOrden, d.cantidadFacturada, d.valorUnitario, d.valorTotal, d.fechaServicio, d.fechaActa], ['3,00', '1,00', '1.296.000', '1.296.000', '02/09/2026', '11/11/2026']);

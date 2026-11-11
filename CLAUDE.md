@@ -2,7 +2,7 @@
 
 Sistema web que, a partir de números de **remesa** (Excel o digitados) y un **consecutivo** por remesa, baja de **Silogtran** el PDF de soporte de cada remesa, lo lee con IA, deja que una persona lo revise y apruebe, genera el **acta de entrega** (4 tipos) y entrega **un solo PDF por remesa** (acta + soporte) para descargar (uno, o varios en ZIP). Cliente final: Elogia Soluciones Logísticas (servicios a Drummond). Idioma de la interfaz: español.
 
-> Estado (2026-11-11): **desplegado en producción en Vercel y funcionando** hasta la lectura con IA y la generación del PDF. Falta probar el login con un usuario real de Silogtran y un lote real, el acta DEIPO y el correo Microsoft 365. Ver «Verificado / no verificado» y «Pendientes».
+> Estado (2026-11-11): **desplegado en producción en Vercel y funcionando** hasta la lectura con IA y la generación del PDF. Las 4 actas (incluida **DEIPO**) están implementadas. Falta probar el login con un usuario real de Silogtran, un lote real y una orden DEIPO real, y el correo Microsoft 365. Ver «Verificado / no verificado» y «Pendientes».
 
 ## Reglas de trabajo
 - El repo es **público**: nunca commitear secretos, claves, cookies, PDF reales, nombres de personas, cédulas, firmas, logos reales ni datos de conexión de la BD. Los valores fijos de las actas viven en la BD (tabla `acta_tipos`); las pruebas locales usan `fixtures/` (en `.gitignore`).
@@ -84,16 +84,16 @@ Muestras analizadas (datos reales solo en local): CPLTD `0101219771` (línea 8),
 - Se guarda siempre la lectura (JSON), las alertas, el dato aprobado y quién aprobó.
 
 ## Las 4 actas
-Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Ya implementada la variante **DLTD** (CMLTD, CPLTD, EDLTD). **DEIPO** (empresa DEI, contratista UT American Logistic, bloque de 5 firmas, tabla propia) **falta**: necesita una muestra.
+Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Dos variantes en la misma plantilla (`cfg.variante`): **DLTD** (CMLTD, CPLTD, EDLTD) y **DEI** (DEIPO). DEIPO (modelo `DEIPO_003`, 2026-11-11) difiere así: encabezado `SIGDEI-0331` / `03-02-2022`; empresa «DRUMMOND ENERGY INC.» (DEI); **contratista = Elogia** (ya no UT American Logistic); **el «Objeto del servicio» se toma de la orden de compra** (por acta, no fijo; la IA lee `orden_objeto`, si no se lee → alerta y hay que escribirlo, y no se puede aprobar sin él); cláusula 6 sin «a satisfacción»; «Manual de Contratistas»; bloque de 5 firmas (Contratista, Director/Superintendente, Bodega, Gerente de área, Country Manager). Una remesa = una acta también en DEIPO (el modelo traía 2 líneas agrupadas; no se replica). La cédula del representante es fija por tipo, como en el modelo. **Falta una orden DEIPO real** para confirmar de dónde sale exactamente el objeto.
 
 | Tipo | Empresa | Contrato (fijo) | Sede (fija, por confirmar) |
 |---|---|---|---|
-| DEIPO | Drummond Energy Inc (DEI) | DCI-2311 | Mina |
+| DEIPO | Drummond Energy Inc (DEI) | DCI-2311 | Mina (modelo) |
 | CMLTD | Drummond Ltd (DLTD) | DCI-2418 | Mina |
 | CPLTD | Drummond Ltd (DLTD) | DCI-2418 | Puerto |
 | EDLTD | Drummond Ltd (DLTD) | DCI-1786 | Mina |
 
-**Valores fijos por tipo** (BD, editables en `/config.html`): contratista, objeto, empresa, supervisor, **planeador = N/A**, comprador, **AFE = N/A**, representante y cédula del contratista, representante de Drummond, nombre bajo la firma, contrato y sede. El **logo y la firma** son imágenes compartidas (fila `_COMUN`) que se suben en `/config.html`. El DCI de la orden (p. ej. `DCI-2410B`) **se ignora**: el contrato es fijo por tipo.
+**Valores fijos por tipo** (BD, editables en `/config.html`): contratista, objeto (salvo DEIPO), empresa, supervisor, **planeador = N/A**, comprador, **AFE = N/A**, representante y cédula del contratista, representante de Drummond, nombre bajo la firma, contrato y sede; solo DEIPO: nombres de Director, Gerente de área y Country Manager, código y fecha del formato. El **logo y la firma** son imágenes compartidas (fila `_COMUN`) que se suben en `/config.html`. El DCI de la orden (p. ej. `DCI-2410B`) **se ignora**: el contrato es fijo por tipo.
 
 **Variables por acta** (editables en la revisión):
 | Campo | Origen / regla |
@@ -112,7 +112,7 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 Correcciones a los modelos ya aplicadas en la plantilla: sin el «JUN(» suelto; ejemplo «(ej: mails internos… paz y salvos, otros)» completo y aparte; cláusula 4 y párrafo del «Manual Integral…» completos en todos; fecha del acta = fecha del cierre; «Angélica Cuao» y «días» bien escritos; «identificada».
 
 ## Modelo de datos (MySQL, `db/*.sql`, utf8mb4)
-`usuarios` (identidad Silogtran, sin clave) · `lotes` · `actas` (remesa, consecutivo, tipo, estado, error, `lectura`/`alertas`/`datos` JSON, aprobado_por/en; único por remesa+consecutivo) · `acta_tipos` (config JSON por tipo + `_COMUN` con logo/firma) · `waf_cookies` · `login_intentos`. El esquema se crea solo (`src/db.js`, idempotente) y, si la variable `ACTAS_SEED` trae JSON y `acta_tipos` está vacía, se siembra una vez.
+`usuarios` (identidad Silogtran, sin clave) · `lotes` · `actas` (remesa, consecutivo, tipo, estado, error, `lectura`/`alertas`/`datos` JSON, aprobado_por/en; único por remesa+consecutivo) · `acta_tipos` (config JSON por tipo + `_COMUN` con logo/firma) · `waf_cookies` · `login_intentos`. El esquema se crea solo (`src/db.js`, idempotente) y, si la variable `ACTAS_SEED` trae JSON `{TIPO:{...}}`, se **agregan los tipos que falten** (nunca sobrescribe lo ya editado en la BD).
 
 ## API (todas exigen sesión salvo health y login)
 `GET /api/health` · `POST /api/auth/login|logout`, `GET /api/auth/me` · `POST /api/lotes/crear`, `GET /api/lotes/listar|ver` · `POST /api/actas/procesar|guardar|aprobar|desaprobar`, `GET /api/actas/obtener|soporte|vistapdf|pdf` · `/api/admin/config|tipo|imagen` (sesión **y** cabecera `x-admin-key`). La sesión es una cookie firmada (`TOKEN_SECRET`, 8 h). Los datos editados se validan en el servidor (`validarEdicion.js`).
@@ -138,7 +138,7 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 
 ## Pendientes y siguientes pasos
 1. Apagar «Vercel Authentication», subir logo y firma, primer lote real de 5–10 remesas.
-2. **Acta DEIPO** (necesita muestra y modelo).
+2. Probar una **orden DEIPO real** (de dónde sale el objeto) y la lectura del campo `orden_objeto`.
 3. **Correo Microsoft 365** (I7): Graph `sendMail`, app de Azure (`Mail.Send`) y buzón remitente; envío individual o por bloques (≈20 MB por correo), registro de envíos.
 4. Revisar con el dueño qué hay en Silogtran para `0101219775` y si re-subir un adjunto cambia el sufijo.
 5. Si hace falta: PDF.js como visor, tope por lote, manual de uso, endurecer el acceso remoto a la BD.
@@ -146,7 +146,7 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 
 ## Preguntas abiertas / recordatorios para el dueño
 - **Sede fija por tipo** (CPLTD = Puerto, los demás = Mina): ¿confirmado?
-- **Muestras reales de DEIPO y EDLTD** y una de escaneo poco legible.
+- **Una remesa real de DEIPO** (PDF de soporte) y de EDLTD, y una de escaneo poco legible.
 - Datos del correo (cuenta Azure y buzón remitente) cuando se llegue a I7.
 
 ## Decisiones del dueño (resumen con fecha)

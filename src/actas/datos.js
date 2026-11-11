@@ -4,11 +4,12 @@ import { parseISO, dmy } from '../lib/fechas.js';
 
 const sinJurisdiccion = (t) => String(t ?? '').replace(/\s+/g, ' ').replace(/\s*JURISDICCI[ÓO]N\s*:.*$/i, '').trim();
 
-export function construirDatos(lectura, linea, { consecutivo, hoy }) {
+export function construirDatos(lectura, linea, { consecutivo, hoy, objetoDeOrden = false }) {
   const precio = parseUS(linea.precio);
   const fecha = parseISO(lectura.bill_fecha_despacho);
   return {
     consecutivo,
+    ...(objetoDeOrden ? { objeto: String(lectura.orden_objeto ?? '').replace(/\s+/g, ' ').trim() } : {}),
     fechaActa: dmy(hoy),
     cierre: { dia: hoy.dia, mes: hoy.mes, anio: hoy.anio },
     ordenCompleta: String(lectura.orden_numero).trim().toUpperCase(),

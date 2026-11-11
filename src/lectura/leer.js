@@ -34,6 +34,7 @@ const TOOL = {
           required: ['linea', 'descripcion', 'cantidad', 'precio', 'total'],
         },
       },
+      orden_objeto: str('Descripción general / objeto del servicio de la orden de compra (texto libre del encabezado o bajo las líneas, ej. «SERVICIOS DE RENTA DE CAMA ALTA»); null si no aparece. Solo texto, sin números de línea'),
       orden_salida_placa: str('Placa en la «ORDEN DE SALIDA» de Drummond; null si no hay esa página'),
       trf_numeros: { type: 'array', items: { type: 'string' }, description: 'Números «TRF NUMBER» legibles de los Transport Request Form (puede haber varios; omite los ilegibles)' },
       paginas: {

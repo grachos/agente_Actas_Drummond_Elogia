@@ -20,4 +20,6 @@ test('sanearDatos recomputes the total, derives the closing date and rejects bad
   assert.throws(() => sanearDatos({ ...ok, fechaActa: '31/02/2026' }), /fecha/);
   assert.throws(() => sanearDatos({ ...ok, valorUnitario: '1296000' }), /valor unitario/);
   assert.throws(() => sanearDatos({ ...ok, descripcion: '' }), /vacío/);
+  assert.throws(() => sanearDatos(ok, { objetoObligatorio: true }), /objeto/);
+  assert.equal(sanearDatos({ ...ok, objeto: '  RENTA   DE CAMA ALTA ' }, { objetoObligatorio: true }).objeto, 'RENTA DE CAMA ALTA');
 });
