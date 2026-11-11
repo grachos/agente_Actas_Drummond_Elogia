@@ -163,6 +163,7 @@ Hecho y probado **en local** (MariaDB real + navegador automatizado + datos de e
 - Lectura real con Claude (`claude-sonnet-5-5`, PDF directo, **sin** `tool_choice` forzado: el modelo lo rechaza): `0101219771` y `0101219749` → tipo CPLTD, validaciones sin alertas, páginas de origen correctas (remesa 1, Bill 2, orden de salida 3, orden 5/6).
 - La remesa `0101219775` en el servidor devuelve el **mismo PDF que 0101219771** (CPLTD): la validación lo bloqueó correctamente (remesa leída ≠ solicitada). Revisar con el dueño qué hay realmente bajo ese nombre; el CMLTD de muestra aún no se ha leído con la IA real.
 - Generación del PDF del acta con Chromium en Vercel: OK (≈52 KB).
+- Robustez: una remesa nunca queda «Procesando» para siempre: límite de 52 s con error `TIMEOUT`, y si la función muere antes, a los 3 min se muestra como error y se puede reintentar. Los tiempos de descarga y lectura quedan en los registros de Vercel (`[procesar] … ms`). La `ADMIN_KEY` se rotó el 2026-11-11 (las variables «sensibles» de Vercel no se pueden leer después: la clave nueva se entregó al dueño en el chat; si se pierde, se vuelve a rotar con `edit_project_env`).
 **Aún sin verificar:** login con usuario real de Silogtran, visor de PDF en el navegador, ZIP/Excel, tiempo de un lote real, rendimiento con 100–300 remesas.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
