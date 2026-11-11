@@ -25,7 +25,8 @@ test('leerSoporte sends the PDF as a document and returns the tool input', async
   const r = await leerSoporte(Buffer.from('%PDF-1.4 x'), { cliente, modelo: 'm' });
   assert.equal(r.remesa_numero, '0100000001');
   assert.equal(sent.messages[0].content[0].type, 'document');
-  assert.equal(sent.tool_choice.name, 'registrar_lectura');
+  assert.equal(sent.tools[0].name, 'registrar_lectura');
+  assert.equal(sent.tool_choice, undefined); // forced tool_choice is not supported by the model
 });
 
 const url = process.env.TEST_DATABASE_URL;

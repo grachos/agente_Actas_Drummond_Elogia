@@ -48,7 +48,7 @@ const TOOL = {
 };
 
 const PROMPT = `Este PDF es un paquete ESCANEADO de soporte de una remesa de transporte (Elogia / Drummond). Puede traer: Remesa terrestre de carga (3 copias en una hoja), Bill of Inland, Orden de salida, uno o varios Transport Request Form y la orden de compra («Purchase Order» u «Orden de Compra»). El orden de páginas varía.
-Lee los datos y llama a la herramienta registrar_lectura.
+Lee los datos y llama OBLIGATORIAMENTE a la herramienta registrar_lectura (es la única forma de responder; no escribas texto).
 Reglas estrictas: son datos sensibles y deben ser exactos. Copia cada valor TAL CUAL está impreso (no corrijas, no calcules, no completes). Si un dato no es legible con certeza, devuelve null y agrégalo a campos_dudosos; NUNCA adivines. Ignora vistos (✓), rayas y escritos a mano que no sean el dato. Los cuadros de letras de la placa se leen juntos (S P X 7 3 6 → SPX736). Para la orden de compra incluye todas las líneas visibles con sus números exactos.`;
 
 export async function leerSoporte(pdf, { modelo = process.env.IA_MODELO || 'claude-sonnet-5-5', cliente, remesa } = {}) {
@@ -61,13 +61,12 @@ export async function leerSoporte(pdf, { modelo = process.env.IA_MODELO || 'clau
       model: modelo,
       max_tokens: 4000,
       tools: [TOOL],
-      tool_choice: { type: 'tool', name: TOOL.name },
       messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: Buffer.from(pdf).toString('base64') } }, { type: 'text', text: PROMPT }] }],
     });
   } catch (e) {
     throw new ApiError('IA_ERROR', 'No se pudo leer el PDF con la IA.', { status: 502, detail: e?.message || String(e) });
   }
   const block = msg.content.find((b) => b.type === 'tool_use');
-  if (!block?.input) throw new ApiError('IA_ERROR', 'La IA no devolvió datos.', { status: 502 });
+  if (!block?.input) throw new ApiError('IA_ERROR', 'La IA no devolvió datos.', { status: 502, detail: `stop_reason=${msg.stop_reason}` });
   return block.input;
 }
