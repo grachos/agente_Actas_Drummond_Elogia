@@ -69,7 +69,7 @@ Todos los PDF traen la página de la orden de compra; **su prefijo decide el tip
   - remesa leída (remesa y `CARGO CONSIGNMENT`) = remesa solicitada = nombre del archivo;
   - prefijo de la orden ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
   - la orden del Bill of Inland coincide con la de la página de orden de compra **comparando sin prefijo** (Bill `0100443504 L1` ↔ `CMLTD-0100443504`); el TRF solo informativo (puede perder ceros);
-  - la línea indicada existe en la página, **`Extended Amt` ÷ `PO Price` es un entero** ≤ `Quantity` (detecta dígitos mal leídos);
+  - la línea indicada existe en la página y `Quantity` × `PO Price` = `Extended Amt` (detecta dígitos mal leídos);
   - placa igual en remesa y Bill of Inland (y en la orden de salida si viene); formato `AAA999`; **no** validar el conductor;
   - fechas válidas y coherentes entre documentos; código Bill of Inland con forma `AAA999MMMAA`.
 - Números: la orden usa formato anglosajón (`4,536,000.00`); el acta usa formato colombiano (`4.536.000`, cantidades `1,00`). Convertir con enteros, nunca con flotantes.
@@ -95,9 +95,9 @@ Modelos entregados por el dueño en Word (ya diligenciados; no están en el repo
 | Orden de compra N° | página de orden de compra |
 | Línea, descripción, cantidad de la orden, valor unitario | línea de la orden indicada en el Bill of Inland |
 | Cantidad de la orden | `Quantity` impresa en la línea de la orden (ej. `4.00EA` → `4,00`) |
-| Valor unitario | el `PO Price` impreso en la línea (ej. 4.565.217), nunca recalculado a mano |
-| Cantidad facturada | **`Extended Amt` de la línea ÷ `PO Price`** (regla del dueño 2026-11-11; ej. 3.913.044 ÷ 1.956.522 = 2). Debe ser entero exacto y ≤ cantidad de la orden; si no, revisión. Coincide con el modelo DEIPO (orden 22, facturada 20). En las muestras CPLTD/CMLTD ambas cantidades coinciden |
-| Valor total facturado | el `Extended Amt` impreso de la línea (= cantidad facturada × valor unitario) |
+| Valor unitario | el `PO Price` impreso en la línea (ej. 1.296.000), nunca recalculado a mano |
+| Cantidad facturada | **1 por remesa** (un viaje). Regla del dueño 2026-11-11: solo sería 2, 3… si el valor impreso en el medio de la línea (`PO Price`) fuese el doble, el triple… del valor del viaje; en las 3 muestras (CPLTD L8, L12, CMLTD L1) es el valor unitario → **1**. Cálculo general: `PO Price × Quantity ÷ Extended Amt`, debe ser entero ≥ 1; si no, revisión |
+| Valor total facturado | cantidad facturada × valor unitario (L12 CPLTD: 1 × 1.296.000 = 1.296.000) |
 | Fecha de inicio **y** de terminación de los servicios | la misma: `DATE OF DISPATCH` del Bill of Inland (día/mes/año), confirmado por el dueño 2026-11-11 |
 | Sede | fija por tipo (CMLTD/EDLTD/DEIPO → Mina; CPLTD → Puerto), validada contra el encabezado de la orden (**confirmar**) |
 | Documentos adjuntos | `<código Bill of Inland> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
