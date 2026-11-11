@@ -54,7 +54,7 @@ Reglas estrictas: son datos sensibles y deben ser exactos. Copia cada valor TAL 
 export async function leerSoporte(pdf, { modelo = process.env.IA_MODELO || 'claude-sonnet-5-5', cliente, remesa } = {}) {
   if (process.env.ACTAS_MOCK === '1' && !process.env.VERCEL) return JSON.parse(readFileSync(new URL(`../../fixtures/lecturas/${remesa}.json`, import.meta.url), 'utf8')); // local development only
   if (!cliente && !process.env.ANTHROPIC_API_KEY) throw new ApiError('CONFIG_MISSING', 'Falta configurar ANTHROPIC_API_KEY en el servidor.', { status: 500 });
-  const ai = cliente ?? new Anthropic({ timeout: 50000, maxRetries: 1 });
+  const ai = cliente ?? new Anthropic({ timeout: 35000, maxRetries: 0 });
   let msg;
   try {
     msg = await ai.messages.create({

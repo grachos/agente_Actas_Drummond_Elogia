@@ -19,7 +19,7 @@ export async function descargarSoporte(remesa) {
   client.importCookies((await loadWafCookies().catch(() => null)) || {});
   let res;
   try {
-    res = await client.request(urlSoporte(remesa), { timeoutSec: 25 });
+    res = await client.request(urlSoporte(remesa), { timeoutSec: 15 });
   } catch (e) {
     if (e?.code === 'SILOG_NOT_FOUND') throw new ApiError('NO_ATTACHMENT', `No existe el soporte de la remesa ${remesa} en Silogtran.`, { status: 404 });
     throw e;

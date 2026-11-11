@@ -56,5 +56,11 @@ test('procesarActa: consistent readings -> LISTA; disagreement or wrong remesa -
   const e = await procesarActa(x.id, deps(async () => lect(), async () => { throw Object.assign(new Error('x'), { name: 'SilogtranError', code: 'WAF_FAILED' }); }));
   assert.equal(e.ok, false);
   assert.equal((await A.obtener(x.id)).estado, 'ERROR');
+  // a hung dependency must end in a recorded TIMEOUT instead of leaving the acta stuck
+  const { loteId: l2 } = await A.crearLote(u.id, [{ remesa: '0100000007', consecutivo: 'T' }]);
+  const [t] = await A.listarActas(l2);
+  const colgada = await procesarActa(t.id, deps(async () => lect(), () => new Promise(() => {})), 100);
+  assert.equal(colgada.motivo, 'TIMEOUT');
+  assert.equal((await A.obtener(t.id)).codigo_error, 'TIMEOUT');
   await db().end();
 });

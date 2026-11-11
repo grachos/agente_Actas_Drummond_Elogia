@@ -29,5 +29,15 @@ test('actas store: lote, atomic claim, edit/approve rules', { skip: !url }, asyn
   await A.guardarDatos(a.id, { linea: '13' }); // editing an approved acta sends it back to review
   const e = await A.obtener(a.id);
   assert.equal(e.estado, 'LISTA'); assert.equal(e.aprobado_por, null); assert.deepEqual(e.datos, { linea: '13' });
+  // a function killed mid-run leaves PROCESANDO; after 3 minutes it shows as ERROR/TIMEOUT and can be claimed again
+  const [b] = (await A.listarActas(lote.loteId)).slice(1);
+  assert.equal(await A.reclamar(b.id), true);
+  assert.equal((await A.obtener(b.id)).estado, 'PROCESANDO');
+  assert.equal(await A.reclamar(b.id), false);
+  const { q } = await import('../src/db.js');
+  await q("UPDATE actas SET actualizado_en = NOW() - INTERVAL 5 MINUTE WHERE id = ?", [b.id]);
+  assert.equal((await A.obtener(b.id)).estado, 'ERROR');
+  assert.equal((await A.obtener(b.id)).codigo_error, 'TIMEOUT');
+  assert.equal(await A.reclamar(b.id), true);
   await db().end();
 });
