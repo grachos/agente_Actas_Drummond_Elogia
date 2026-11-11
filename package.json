@@ -4,10 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Genera actas de entrega a partir de remesas de Silogtran.",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "test": "node --test --test-concurrency=1 \"tests/*.test.js\"",
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "migrate": "node scripts/migrate.mjs",
+    "start:local": "node scripts/dev-server.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
