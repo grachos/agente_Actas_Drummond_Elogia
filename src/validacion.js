@@ -69,14 +69,21 @@ export function validar(lectura, { remesa }) {
       const q = parseUS(linea.cantidad); // hundredths of a unit
       const precio = parseUS(linea.precio); // cents
       const total = parseUS(linea.total); // cents
-      if (q === null || precio === null || total === null) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${n}.`);
-      else if (q * precio !== total * 100) err('linea', `Línea ${n}: cantidad × precio (${linea.cantidad} × ${linea.precio}) no es igual al total (${linea.total}).`);
+      let veces = 1;
+      if (q === null || precio === null || total === null || q === 0 || precio === 0) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${n}.`);
+      else {
+        // Owner rule: (total ÷ quantity) ÷ unit price = how many trips were billed. Normally 1; 2, 3… 20 when the total is that many times the price.
+        const resto = (total * 100) % (q * precio);
+        veces = Math.floor((total * 100) / (q * precio));
+        if (resto !== 0 || veces < 1) err('linea', `Línea ${n}: el total (${linea.total}) no es un número entero de veces «cantidad × precio» (${linea.cantidad} × ${linea.precio}); revisa los valores leídos.`);
+      }
       if (!String(linea.descripcion ?? '').trim()) err('linea', `La descripción de la línea ${n} está vacía.`);
-      lineas.push(linea);
+      lineas.push({ ...linea, veces });
+      continue;
     }
   }
 
-  return { ok: errores.length === 0, tipo: orden?.prefijo ?? null, lineas, linea: lineas[0] ?? null, cantidadFacturada: 1, errores }; // billed quantity = 1 per line (owner rule 2026-11-11)
+  return { ok: errores.length === 0, tipo: orden?.prefijo ?? null, lineas, linea: lineas[0] ?? null, errores };
 }
 
 // Two independent readings must agree on every critical field; returns the list of disagreeing fields.

@@ -21,7 +21,7 @@ test('a consistent reading passes and bills 1', () => {
   assert.equal(r.tipo, 'CPLTD');
   assert.equal(r.linea.linea, 12);
   assert.equal(r.lineas.length, 1);
-  assert.equal(r.cantidadFacturada, 1);
+  assert.equal(r.lineas[0].veces, 1); // total ÷ quantity = unit price -> billed once
 });
 test('order in the Bill may lack the prefix and leading zeros', () => {
   const l = base(); l.orden_numero = 'CMLTD-0100443504'; l.bill_po_transport = '100443504 L1';
@@ -48,6 +48,17 @@ test('comparar finds disagreements between two readings', () => {
   assert.deepEqual(comparar(a, b), []);
   b.bill_codigo = 'XYZ002SEP26'; b.lineas_orden[1].precio = '1,296,001.00';
   assert.deepEqual(comparar(a, b).sort(), ['bill_codigo', 'lineas_orden']);
+});
+test('billed times = (total ÷ quantity) ÷ unit price: 1 normally, 2, 3… 20 when the total is that many times the price', () => {
+  const l = base();
+  l.lineas_orden[1].total = '7,776,000.00'; // 3 × 1,296,000 × 2
+  const r = validar(l, { remesa: '0100000001' });
+  assert.equal(r.ok, true, JSON.stringify(r.errores));
+  assert.equal(r.lineas[0].veces, 2);
+  l.lineas_orden[1].total = '77,760,000.00'; // × 20
+  assert.equal(validar(l, { remesa: '0100000001' }).lineas[0].veces, 20);
+  l.lineas_orden[1].total = '5,000,000.00'; // not a whole number of times -> blocked
+  assert.ok(validar(l, { remesa: '0100000001' }).errores.some((e) => e.campo === 'linea'));
 });
 test('a remesa can bill two lines of the same order', () => {
   const l = base(); l.bill_po_transport = '500000001A L11 L12';

@@ -18,7 +18,7 @@ export function construirDatos(lectura, lineas, { consecutivo, hoy, objetoDeOrde
     fechaServicio: dmy(fecha),
     lineas: (Array.isArray(lineas) ? lineas : [lineas]).map((l) => {
       const precio = parseUS(l.precio);
-      return { linea: String(l.linea), descripcion: limpiar(l.descripcion), cantidadOrden: formatQty(parseUS(l.cantidad)), cantidadFacturada: '1,00', valorUnitario: formatCOP(precio), valorTotal: formatCOP(precio) /* billed 1 × unit price */ };
+      return { linea: String(l.linea), descripcion: limpiar(l.descripcion), cantidadOrden: formatQty(parseUS(l.cantidad)), cantidadFacturada: formatQty((l.veces ?? 1) * 100), valorUnitario: formatCOP(precio), valorTotal: formatCOP(precio * (l.veces ?? 1)) /* billed quantity × unit price */ };
     }),
     adjuntos: `${lectura.bill_codigo} BILL OF INLAND – TRF – ORDEN DE COMPRA ${orden}`,
   };

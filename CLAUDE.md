@@ -77,14 +77,14 @@ Muestras analizadas (datos reales solo en local): CPLTD `0101219771` (línea 8),
   - remesa leída y `CARGO CONSIGNMENT` = remesa pedida;
   - prefijo ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
   - orden del Bill = orden de compra **sin prefijo** ni ceros iniciales;
-  - cada línea del Bill existe en la orden y `Quantity × PO Price = Extended Amt`;
+  - cada línea del Bill existe en la orden y `Extended Amt ÷ (Quantity × PO Price)` es un **entero ≥ 1** (ese entero es la cantidad facturada);
   - placa igual en remesa, Bill (y orden de salida si viene), formato `AAA999`;
   - fecha de despacho válida (y coincidente con la de la remesa si ambas se leen); código Bill con forma `AAA999MMMAA`.
 - Dinero en **enteros** (nunca flotantes): la orden usa formato `4,536,000.00`, el acta `4.536.000` y cantidades `1,00`.
 - Se guarda siempre la lectura (JSON), las alertas, el dato aprobado y quién aprobó.
 
 ## Las 4 actas
-Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Dos variantes en la misma plantilla (`cfg.variante`): **DLTD** (CMLTD, CPLTD, EDLTD) y **DEI** (DEIPO). DEIPO (modelo `DEIPO_003`, 2026-11-11) difiere así: encabezado `SIGDEI-0331` / `03-02-2022`; empresa «DRUMMOND ENERGY INC.» (DEI); **contratista = Elogia** (ya no UT American Logistic); **el «Objeto del servicio» se deja en blanco** (campo por acta, opcional y editable en la revisión; no se lee de la orden; confirmado por el dueño 2026-11-11; la bandera de la config se llama `objetoDeOrden` por razones históricas); cláusula 6 sin «a satisfacción»; «Manual de Contratistas»; bloque de 5 firmas (Contratista, Director/Superintendente, Bodega, Gerente de área, Country Manager). Puede haber **más de una línea de la orden de compra** por remesa (el modelo DEIPO traía 2): el Bill lista varias líneas en `PO. TRANSPORT` (ej. `… L1 L2`) y el acta lleva **una fila por línea** (cantidad facturada 1 por línea; hasta 6). Vale para todos los tipos. La cédula del representante es fija por tipo, como en el modelo. **Falta una remesa DEIPO real** para confirmar cómo el Bill lista varias líneas.
+Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF con Chromium, fiel al modelo Word del cliente (encabezado SIG-1639 repetido en cada página, tablas, cláusulas, firmas). Los modelos Word originales eran plantillas de combinación de correspondencia; **no están en el repo** (traen nombres, cédula y firma). Dos variantes en la misma plantilla (`cfg.variante`): **DLTD** (CMLTD, CPLTD, EDLTD) y **DEI** (DEIPO). DEIPO (modelo `DEIPO_003`, 2026-11-11) difiere así: encabezado `SIGDEI-0331` / `03-02-2022`; empresa «DRUMMOND ENERGY INC.» (DEI); **contratista = Elogia** (ya no UT American Logistic); **el «Objeto del servicio» se deja en blanco** (campo por acta, opcional y editable en la revisión; no se lee de la orden; confirmado por el dueño 2026-11-11; la bandera de la config se llama `objetoDeOrden` por razones históricas); cláusula 6 sin «a satisfacción»; «Manual de Contratistas»; bloque de 5 firmas (Contratista, Director/Superintendente, Bodega, Gerente de área, Country Manager). Puede haber **más de una línea de la orden de compra** por remesa (el modelo DEIPO traía 2): el Bill lista varias líneas en `PO. TRANSPORT` (ej. `… L1 L2`) y el acta lleva **una fila por línea** (cada línea con su cantidad facturada calculada; hasta 6). Vale para todos los tipos. La cédula del representante es fija por tipo, como en el modelo. **Falta una remesa DEIPO real** para confirmar cómo el Bill lista varias líneas.
 
 | Tipo | Empresa | Contrato (fijo) | Sede (fija, por confirmar) |
 |---|---|---|---|
@@ -104,7 +104,7 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 | Cantidad de la orden | `Quantity` impresa (`3.00EA` → `3,00`) |
 | Valor unitario | `PO Price` impreso |
 | Cantidad facturada | **1 por línea de la remesa**; solo 2, 3… si el valor impreso fuese el doble, triple… del valor del viaje |
-| Valor total facturado | cantidad facturada × valor unitario (se recalcula al editar) |
+| Valor total facturado | cantidad facturada × valor unitario (se recalcula al editar; con facturada = 1 es igual al valor unitario) |
 | Fecha de inicio y de terminación | la misma: `DATE OF DISPATCH` del Bill |
 | Fecha del acta y cierre en letras | la misma: **hoy** (America/Bogotá), editable |
 | Documentos adjuntos | `<código Bill> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
@@ -152,3 +152,4 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 ## Decisiones del dueño (resumen con fecha)
 - 2026-11-10/11: el prefijo de la orden decide el tipo; una acta por remesa; salida en PDF; consecutivo por Excel o pantalla; nombres fijos por tipo; contrato fijo por tipo; planeador y AFE = N/A; cantidad facturada = 1; fecha de servicio = despacho del Bill; fecha del acta = hoy; descripción tal cual; sufijo del soporte siempre `_57`; IA = Anthropic; Vercel + base MySQL de Hostinger; cada usuario entra con su cuenta de Silogtran; 4–6 usuarios, lotes de 100–300; correo Microsoft 365; nombre del archivo `<TIPO>_<remesa>.pdf`; revisión en una sola pantalla con vista previa en PDF.
 - 2026-11-11 (prueba en la app): la **descripción incluye la jurisdicción**; en DEIPO el **objeto del servicio queda en blanco**; una remesa puede tener **varias líneas** de la orden (una fila por línea en el acta).
+- 2026-11-11: cantidad facturada = `Extended Amt ÷ Quantity ÷ PO Price` para todos los tipos (1 normalmente; 2, 3… 20 si el total es esas veces el valor del medio); DEIPO usa la misma lógica (el modelo con «30 de la orden / 25 facturadas» es solo ilustrativo).
