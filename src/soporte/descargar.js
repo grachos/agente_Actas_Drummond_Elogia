@@ -1,4 +1,5 @@
 // Downloads the remesa support PDF from the public Silogtran URL (read-only GET, no login needed; the WAF cookie is reused).
+import { readFileSync } from 'node:fs';
 import { Silogtran } from '../silogtran/client.js';
 import { ApiError } from '../http/errors.js';
 import { loadWafCookies, saveWafCookies } from '../store/config.js';
@@ -11,6 +12,9 @@ export const remesaValida = (r) => /^\d{6,12}$/.test(String(r));
 
 export async function descargarSoporte(remesa) {
   if (!remesaValida(remesa)) throw new ApiError('REMESA_INVALID', `La remesa «${remesa}» no es válida (solo dígitos).`, { status: 400 });
+  if (process.env.ACTAS_MOCK === '1' && !process.env.VERCEL) { // local development only: read sample PDFs from fixtures/soporte/
+    try { return readFileSync(new URL(`../../fixtures/soporte/${remesa}.pdf`, import.meta.url)); } catch { throw new ApiError('NO_ATTACHMENT', `No existe el soporte de la remesa ${remesa} en Silogtran.`, { status: 404 }); }
+  }
   const client = new Silogtran(BASE());
   client.importCookies((await loadWafCookies().catch(() => null)) || {});
   let res;

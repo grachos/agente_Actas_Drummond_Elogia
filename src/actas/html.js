@@ -28,7 +28,7 @@ export function headerTemplate(cfg) {
 const row = (k, v, sub = '') =>
   `<tr><td class="k"><b>${k}</b>${sub ? `<br><span class="s">${sub}</span>` : ''}</td><td>${esc(v)}</td></tr>`;
 
-export function actaHtml(cfg, d) {
+export function actaHtml(cfg, d, { vista = false } = {}) {
   const sigla = cfg.empresaSigla;
   const mes = MESES[d.cierre.mes - 1];
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
@@ -52,7 +52,9 @@ export function actaHtml(cfg, d) {
   .firma { height: 15mm; display: block; }
   .ruled { border-bottom: 1px solid #000; height: 17px; }
   .keep { page-break-inside: avoid; }
+  ${vista ? 'body { max-width: 816px; margin: 0 auto; padding: 16px 48px 40px; background: #fff; }' : ''}
   </style></head><body>
+  ${vista ? headerTemplate(cfg).replace('<span class="pageNumber"></span>', '1').replace('<span class="totalPages"></span>', '2').replace('padding:0 18mm', 'padding:0').replace('margin-top:8mm', 'margin:0 0 14px') : ''}
   <table class="f">
     ${row('FECHA DEL ACTA:', d.fechaActa)}
     ${row('ORDEN DE COMPRA N°:', d.ordenCompleta)}

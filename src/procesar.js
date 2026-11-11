@@ -15,7 +15,7 @@ export async function procesarActa(id, deps = real) {
   try {
     const acta = await A.obtener(id);
     const pdf = await deps.descargar(acta.remesa);
-    const [l1, l2] = await Promise.all([deps.leer(pdf), deps.leer(pdf)]);
+    const [l1, l2] = await Promise.all([deps.leer(pdf, { remesa: acta.remesa }), deps.leer(pdf, { remesa: acta.remesa })]);
     const v = validar(l1, { remesa: acta.remesa });
     const alertas = [...v.errores, ...comparar(l1, l2).map((campo) => ({ campo, mensaje: `Las dos lecturas de la IA difieren en «${campo}».` }))];
     let datos = null;

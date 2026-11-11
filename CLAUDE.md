@@ -2,7 +2,7 @@
 
 Sistema que, a partir de números de remesa, baja de **Silogtran** el PDF adjunto de cada remesa, lee sus datos, genera el **acta de entrega** (4 tipos) y arma un PDF final (acta + soporte) para descargar o enviar por correo. Cliente final: Elogia Soluciones Logísticas (servicios a Drummond).
 
-> Estado: **planeación cerrada, sin código**. Empezar por el incremento I0. Las preguntas abiertas están al final; no inventar respuestas: preguntar al dueño.
+> Estado: **código inicial listo y probado en local** (ver «Estado de implementación»). Las preguntas abiertas están al final; no inventar respuestas: preguntar al dueño.
 
 ## Reglas de trabajo
 - El repo es **público**: nunca commitear secretos, cookies, PDF reales, HTML capturado, nombres de personas ni cédulas. Los datos fijos de las actas (nombres, cédula) viven en Supabase, no en el código. Fixtures reales solo en local (`fixtures/` está en `.gitignore`).
@@ -131,16 +131,28 @@ Descripción de la línea en el acta: **tal cual** como aparece en la orden (con
 - **I8 Cierre**: límites de intentos, auditoría, manual de uso, pruebas de punta a punta con remesas reales.
 
 ## Variables de entorno (sin valores en el repo)
-`SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
+`DATABASE_URL` (+ `DATABASE_SSL`), `SILOG_BASE_URL`, `SOPORTE_SUFIJO`, `TOKEN_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del correo (I7). Ver `.env.example`. Solo en desarrollo local: `ACTAS_MOCK=1` (usa `fixtures/` en vez de Silogtran e IA; ignorado en Vercel). Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Decisiones de operación (2026-11-11)
-- **Cada usuario entra con su propia cuenta de Silogtran** (se valida contra Silogtran; credenciales cifradas con `ENCRYPTION_KEY`, patrón M1 de la referencia) y cada acta/lote guarda **qué usuario** la hizo. Cada usuario usa su sesión de Silogtran para sus remesas.
+- **Cada usuario entra con su propia cuenta de Silogtran**: se valida contra Silogtran al entrar y **la contraseña no se guarda** (solo se guarda el usuario); cada lote/acta/aprobación guarda **qué usuario** la hizo. El soporte se baja de la URL pública, así que no hace falta una sesión de Silogtran por usuario. Tras 5 intentos fallidos en 15 min se bloquea el usuario (protege su cuenta de Silogtran).
 - **PLANEADOR y AFE = `N/A` en los 4 tipos** (en el modelo DEIPO el planeador era otra persona; se pasa a N/A por instrucción del dueño).
 - **Pendiente, manejado así por ahora; recordárselo al dueño:** (a) sede fija por tipo (CPLTD = Puerto, los demás = Mina); (b) muestras de DEIPO y EDLTD y una poco legible.
 - Usuarios: 4–6 personas, cada una con su usuario. Lotes: 100–300 remesas. Correo: Microsoft 365. Nombre del archivo final: `<TIPO>_<remesa>.pdf` (ej. `CPLTD_0101219749.pdf`).
 - **Entrega pedida para hoy (2026-11-11):** alcance mínimo viable = descargar soporte → leer → revisión → acta PDF → PDF final descargable por remesa y por lote (I0–I6 simplificados). El correo (I7) puede ir después si no alcanza.
 
+## Estado de implementación (2026-11-11)
+Hecho y probado **en local** (MariaDB real + navegador automatizado + datos de ejemplo; `npm test` = 16 pruebas, las de BD corren con `TEST_DATABASE_URL`):
+- Base: `db/*.sql` (usuarios, lotes, actas, config por tipo, WAF, intentos de login), `src/db.js`, `src/store/*`, `scripts/migrate.mjs`, `scripts/seed-config.mjs` (carga los datos fijos por tipo desde un JSON local; **nunca** al repo).
+- Silogtran: cliente portado de la referencia (`src/silogtran/client.js`, `browser.js`), descarga del soporte por URL pública (`src/soporte/descargar.js`).
+- Lectura: `src/lectura/leer.js` (PDF directo a Claude con herramienta de salida fija; dos lecturas en paralelo) + `src/validacion.js` + `src/procesar.js` (estados PENDIENTE→PROCESANDO→LISTA/REVISAR/ERROR; reclamo atómico).
+- Acta: `src/actas/html.js` + `pdf.js` (HTML→PDF con Chromium), `datos.js` (formatos y recálculo), `validarEdicion.js`, `final.js` (acta + soporte en un solo PDF con `pdf-lib`; nombre `<TIPO>_<remesa>.pdf`).
+- API (4 funciones): `api/health`, `api/auth/[action]`, `api/lotes/[action]`, `api/actas/[action]`. Front: `public/` (login, lotes, lista con estados, revisión en una sola pantalla con soporte a la izquierda y datos / vista previa del acta a la derecha, aprobar individual o por selección, ZIP).
+- Flujo probado de punta a punta en local: login → lote → procesar → LISTA/REVISAR/ERROR → revisar → aprobar → PDF final (acta + soporte). Solo se generan PDF de actas aprobadas (409 si no).
+
+**NO verificado todavía (necesita credenciales o despliegue):** acceso real a Silogtran (login y WAF desde Vercel), descarga del soporte desde Vercel, lectura real con Claude (precisión sobre los escaneados), conexión a Hostinger, Chromium en Vercel (tamaño y tiempo del PDF), visor de PDF nativo del navegador en la pantalla de revisión (el navegador automatizado no tiene visor; probar en Chrome/Edge real; si falla, usar PDF.js), ZIP y lectura de Excel (las librerías vienen de cdnjs).
+**Falta construir:** acta DEIPO (formato y firmas propios; necesita muestra), correo Microsoft 365 (I7), carga de la configuración por tipo en la BD real, tope de remesas por lote y manual de uso.
+
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. Hostinger: motor y datos de conexión (host, puerto, base, usuario; clave solo como variable de entorno) y si el acceso remoto está habilitado para cualquier origen.
+1. Hostinger: motor y datos de conexión (host, puerto, base, usuario; clave solo como variable de entorno) y acceso remoto habilitado para cualquier origen.
 2. Credenciales para correo (app de Azure y buzón remitente), cuando se llegue a I7.
 3. Recordatorio pendiente: sede fija por tipo y muestras DEIPO/EDLTD.

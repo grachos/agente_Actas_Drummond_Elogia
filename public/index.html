@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Actas de entrega</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<section id="login" class="center" hidden>
+  <form id="loginForm" class="card">
+    <h1>Actas de entrega</h1>
+    <p class="muted">Entra con tu usuario y contraseña de Silogtran.</p>
+    <label>Usuario <input name="usuario" autocomplete="username" required></label>
+    <label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
+    <p id="loginError" class="error" role="alert"></p>
+    <button class="primary" id="loginBtn">Entrar</button>
+    <p class="muted small">La contraseña solo se usa para verificar tu identidad; no se guarda.</p>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <strong>Actas de entrega</strong>
+    <span class="grow"></span>
+    <span id="who" class="muted"></span>
+    <button id="logout">Salir</button>
+  </header>
+  <main class="layout">
+    <aside class="side">
+      <div class="bar">
+        <select id="lotes" aria-label="Lote"></select>
+        <button id="nuevoBtn" class="primary">Nuevo lote</button>
+      </div>
+      <div class="bar wrap">
+        <label class="chk"><input type="checkbox" id="selAll"> Todas</label>
+        <button id="procBtn" title="Lee los soportes pendientes">Procesar pendientes</button>
+        <button id="aprobBtn" title="Aprueba las seleccionadas que estén listas">Aprobar selección</button>
+        <button id="zipBtn" title="Descarga un PDF por remesa en un ZIP">Descargar ZIP</button>
+      </div>
+      <div id="progress" class="progress" hidden><div></div><span></span></div>
+      <ul id="lista" class="lista"></ul>
+    </aside>
+    <section class="review" id="review">
+      <p class="empty">Elige una remesa de la lista para revisarla.</p>
+    </section>
+  </main>
+</div>
+
+<dialog id="nuevo">
+  <form method="dialog" class="card" id="nuevoForm">
+    <h2>Nuevo lote</h2>
+    <p class="muted">Una remesa por línea: <code>remesa ; consecutivo</code> (separado por «;», coma, tabulación o espacio). También puedes subir un Excel con columnas <b>remesa</b> y <b>consecutivo</b>.</p>
+    <textarea id="nuevoTxt" rows="10" placeholder="0101219749;CPLTD-053-26"></textarea>
+    <input type="file" id="nuevoFile" accept=".xlsx,.xls,.csv">
+    <p id="nuevoMsg" class="error" role="alert"></p>
+    <div class="row"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="nuevoOk" value="ok">Crear lote</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
