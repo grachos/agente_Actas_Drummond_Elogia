@@ -49,15 +49,15 @@ test('comparar finds disagreements between two readings', () => {
   b.bill_codigo = 'XYZ002SEP26'; b.lineas_orden[1].precio = '1,296,001.00';
   assert.deepEqual(comparar(a, b).sort(), ['bill_codigo', 'lineas_orden']);
 });
-test('billed times = (total ÷ quantity) ÷ unit price: 1 normally, 2, 3… 20 when the total is that many times the price', () => {
+test("billed times = middle value ÷ (total ÷ quantity): 1 normally; the owner's example gives 3 and an amount of 150", () => {
   const l = base();
-  l.lineas_orden[1].total = '7,776,000.00'; // 3 × 1,296,000 × 2
+  l.lineas_orden[1] = { linea: 12, descripcion: 'X', cantidad: '4.00EA', precio: '150.00', total: '200.00' }; // owner's example
   const r = validar(l, { remesa: '0100000001' });
   assert.equal(r.ok, true, JSON.stringify(r.errores));
-  assert.equal(r.lineas[0].veces, 2);
-  l.lineas_orden[1].total = '77,760,000.00'; // × 20
-  assert.equal(validar(l, { remesa: '0100000001' }).lineas[0].veces, 20);
-  l.lineas_orden[1].total = '5,000,000.00'; // not a whole number of times -> blocked
+  assert.deepEqual([r.lineas[0].veces, r.lineas[0].unitario], [3, 5000]); // unit 50.00 = 5000 cents
+  l.lineas_orden[1].total = '77,760,000.00'; l.lineas_orden[1].cantidad = '3.00EA'; l.lineas_orden[1].precio = '1,296,000.00'; // unit 25,920,000 > middle -> not whole
+  assert.ok(validar(l, { remesa: '0100000001' }).errores.some((e) => e.campo === 'linea'));
+  l.lineas_orden[1].total = '5,000,000.00'; // total ÷ quantity not exact
   assert.ok(validar(l, { remesa: '0100000001' }).errores.some((e) => e.campo === 'linea'));
 });
 test('a remesa can bill two lines of the same order', () => {

@@ -14,12 +14,12 @@ const lect = () => ({
 test('construirDatos keeps the jurisdiction, bills 1 per line, supports several lines and a blank object; recalcularTotal follows edits', () => {
   const hoy = { dia: 11, mes: 11, anio: 2026 };
   const l2 = { linea: 13, descripcion: 'OTRO SERVICIO', cantidad: '10.00EA', precio: '2,760,000.00', total: '27,600,000.00' };
-  const d = construirDatos(lect(), [lect().lineas_orden[0], { ...l2, veces: 20 }], { consecutivo: 'C-1', hoy });
+  const d = construirDatos(lect(), [lect().lineas_orden[0], { ...l2, veces: 20, unitario: 13800000 }], { consecutivo: 'C-1', hoy });
   assert.equal(d.ordenCompleta, 'CPLTD-500000001A');
   assert.equal(d.lineas.length, 2);
   assert.equal(d.lineas[0].descripcion, 'SERVICIO DE TRANSPORTE VEHÍCULO TIPO: CAMION 600 RUTA: PDR-BAQ JURISDICCIÓN: CIÉNAGA');
   assert.deepEqual(Object.values(d.lineas[0]).slice(0, 6), ['12', d.lineas[0].descripcion, '3,00', '1,00', '1.296.000', '1.296.000']);
-  assert.deepEqual([d.lineas[1].cantidadOrden, d.lineas[1].cantidadFacturada, d.lineas[1].valorUnitario, d.lineas[1].valorTotal], ['10,00', '20,00', '2.760.000', '55.200.000']); // billed 20 × unit price
+  assert.deepEqual([d.lineas[1].cantidadOrden, d.lineas[1].cantidadFacturada, d.lineas[1].valorUnitario, d.lineas[1].valorTotal], ['10,00', '20,00', '138.000', '2.760.000']); // billed 20 × unit value 138.000 = the middle value 2.760.000
   assert.deepEqual([d.fechaServicio, d.fechaActa], ['02/09/2026', '11/11/2026']);
   assert.equal('objeto' in d, false);
   assert.equal(construirDatos(lect(), lect().lineas_orden[0], { consecutivo: 'C', hoy, objetoDeOrden: true }).objeto, ''); // DEIPO: blank

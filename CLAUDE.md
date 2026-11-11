@@ -77,7 +77,7 @@ Muestras analizadas (datos reales solo en local): CPLTD `0101219771` (línea 8),
   - remesa leída y `CARGO CONSIGNMENT` = remesa pedida;
   - prefijo ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
   - orden del Bill = orden de compra **sin prefijo** ni ceros iniciales;
-  - cada línea del Bill existe en la orden y `Extended Amt ÷ (Quantity × PO Price)` es un **entero ≥ 1** (ese entero es la cantidad facturada);
+  - cada línea del Bill existe en la orden y `PO Price ÷ (Extended Amt ÷ Quantity)` es un **entero ≥ 1** (ese entero es la cantidad facturada);
   - placa igual en remesa, Bill (y orden de salida si viene), formato `AAA999`;
   - fecha de despacho válida (y coincidente con la de la remesa si ambas se leen); código Bill con forma `AAA999MMMAA`.
 - Dinero en **enteros** (nunca flotantes): la orden usa formato `4,536,000.00`, el acta `4.536.000` y cantidades `1,00`.
@@ -102,9 +102,9 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 | Orden de compra | página de la orden (con prefijo) |
 | Línea(s) / descripción | línea(s) de la orden indicadas en el Bill; descripción **tal cual, incluida la «JURISDICCIÓN: …»** (confirmado 2026-11-11; corrige la decisión anterior de omitirla) |
 | Cantidad de la orden | `Quantity` impresa (`3.00EA` → `3,00`) |
-| Valor unitario | `PO Price` impreso |
-| Cantidad facturada | **1 por línea de la remesa**; solo 2, 3… si el valor impreso fuese el doble, triple… del valor del viaje |
-| Valor total facturado | cantidad facturada × valor unitario (se recalcula al editar; con facturada = 1 es igual al valor unitario) |
+| Valor unitario | `Extended Amt ÷ Quantity` (normalmente igual al `PO Price` impreso) |
+| Cantidad facturada | **valor del medio (`PO Price`) ÷ valor unitario**, con valor unitario = `Extended Amt ÷ Quantity` (regla del dueño, confirmada con ejemplo 2026-11-11, igual para los 4 tipos): normalmente el valor unitario **es** el del medio → **1**; ejemplo: total 200, cantidad 4 → unitario 50; valor del medio 150 → facturada **3** y valor a facturar 3 × 50 = **150**. Debe ser un entero ≥ 1; si no, revisión |
+| Valor total facturado | cantidad facturada × valor unitario (se recalcula al editar; es igual al valor del medio) |
 | Fecha de inicio y de terminación | la misma: `DATE OF DISPATCH` del Bill |
 | Fecha del acta y cierre en letras | la misma: **hoy** (America/Bogotá), editable |
 | Documentos adjuntos | `<código Bill> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
@@ -152,4 +152,4 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 ## Decisiones del dueño (resumen con fecha)
 - 2026-11-10/11: el prefijo de la orden decide el tipo; una acta por remesa; salida en PDF; consecutivo por Excel o pantalla; nombres fijos por tipo; contrato fijo por tipo; planeador y AFE = N/A; cantidad facturada = 1; fecha de servicio = despacho del Bill; fecha del acta = hoy; descripción tal cual; sufijo del soporte siempre `_57`; IA = Anthropic; Vercel + base MySQL de Hostinger; cada usuario entra con su cuenta de Silogtran; 4–6 usuarios, lotes de 100–300; correo Microsoft 365; nombre del archivo `<TIPO>_<remesa>.pdf`; revisión en una sola pantalla con vista previa en PDF.
 - 2026-11-11 (prueba en la app): la **descripción incluye la jurisdicción**; en DEIPO el **objeto del servicio queda en blanco**; una remesa puede tener **varias líneas** de la orden (una fila por línea en el acta).
-- 2026-11-11: cantidad facturada = `Extended Amt ÷ Quantity ÷ PO Price` para todos los tipos (1 normalmente; 2, 3… 20 si el total es esas veces el valor del medio); DEIPO usa la misma lógica (el modelo con «30 de la orden / 25 facturadas» es solo ilustrativo).
+- 2026-11-11: cantidad facturada = `PO Price ÷ (Extended Amt ÷ Quantity)` para todos los tipos (1 normalmente; 2, 3… 20 si el valor del medio es esas veces el valor unitario); ejemplo del dueño: total 200, cantidad 4, medio 150 → unitario 50, facturada 3, valor a facturar 150. DEIPO usa la misma lógica (el modelo con «30 de la orden / 25 facturadas» es solo ilustrativo). Una versión anterior de esta regla estaba invertida y se corrigió.

@@ -69,16 +69,18 @@ export function validar(lectura, { remesa }) {
       const q = parseUS(linea.cantidad); // hundredths of a unit
       const precio = parseUS(linea.precio); // cents
       const total = parseUS(linea.total); // cents
-      let veces = 1;
-      if (q === null || precio === null || total === null || q === 0 || precio === 0) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${n}.`);
+      let veces = 1; let unitario = precio;
+      if (q === null || precio === null || total === null || q === 0 || precio === 0 || total === 0) err('linea', `No se pudieron leer cantidad, precio o total de la línea ${n}.`);
       else {
-        // Owner rule: (total ÷ quantity) ÷ unit price = how many trips were billed. Normally 1; 2, 3… 20 when the total is that many times the price.
-        const resto = (total * 100) % (q * precio);
-        veces = Math.floor((total * 100) / (q * precio));
-        if (resto !== 0 || veces < 1) err('linea', `Línea ${n}: el total (${linea.total}) no es un número entero de veces «cantidad × precio» (${linea.cantidad} × ${linea.precio}); revisa los valores leídos.`);
+        // Owner rule (2026-11-11): unit value = line total ÷ quantity; billed quantity = middle value (PO Price) ÷ unit value.
+        // Normally the unit value IS the middle value -> 1. Example: total 200, quantity 4 -> unit 50; middle 150 -> billed 3, amount 3 × 50 = 150.
+        const exacta = (total * 100) % q === 0;
+        unitario = exacta ? (total * 100) / q : null; // cents
+        if (!exacta || precio % unitario !== 0 || precio / unitario < 1) err('linea', `Línea ${n}: el valor del medio (${linea.precio}) no es un número entero de veces el valor unitario (total ${linea.total} ÷ cantidad ${linea.cantidad}); revisa los valores leídos.`);
+        else veces = precio / unitario;
       }
       if (!String(linea.descripcion ?? '').trim()) err('linea', `La descripción de la línea ${n} está vacía.`);
-      lineas.push({ ...linea, veces });
+      lineas.push({ ...linea, veces, unitario });
       continue;
     }
   }
