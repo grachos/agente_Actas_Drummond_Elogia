@@ -134,7 +134,7 @@ export class Silogtran {
       }
       const body = Buffer.from(await res.arrayBuffer());
       const type = res.headers.get('content-type') || '';
-      if (res.status >= 400) throw new SilogtranError(`Silogtran responded HTTP ${res.status}.`);
+      if (res.status >= 400) throw new SilogtranError(`Silogtran responded HTTP ${res.status}.`, { code: res.status === 404 ? 'SILOG_NOT_FOUND' : 'SILOGTRAN_ERROR' });
       return { status: res.status, url: url.href, body, type, headers: res.headers, text: decode(body, type) };
     }
     throw new SilogtranError('Too many redirects.');
