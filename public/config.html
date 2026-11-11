@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Configuración de actas</title><link rel="stylesheet" href="/styles.css"></head>
+<body style="overflow:auto">
+<header class="top"><a href="/">← Volver</a><strong>Configuración de actas</strong><span class="grow"></span></header>
+<main style="max-width:900px;margin:16px auto;padding:0 16px;display:grid;gap:16px">
+  <section class="card" style="width:auto">
+    <label>Clave de administrador <input id="clave" type="password" autocomplete="off"></label>
+    <div class="row" style="justify-content:flex-start"><button class="primary" id="cargar">Cargar configuración</button><span id="msg" class="error"></span></div>
+  </section>
+  <section class="card" style="width:auto" id="imgs" hidden>
+    <h2>Logo y firma (iguales para todos los tipos)</h2>
+    <label>Logo de Drummond (PNG o JPG, máx. 250 KB) <input type="file" id="logo" accept="image/png,image/jpeg"></label><span id="logoSt" class="muted small"></span>
+    <label>Firma del contratista (PNG o JPG, máx. 250 KB) <input type="file" id="firma" accept="image/png,image/jpeg"></label><span id="firmaSt" class="muted small"></span>
+  </section>
+  <div id="tipos" style="display:grid;gap:16px"></div>
+</main>
+<script type="module" src="/config.js"></script>
+</body></html>
