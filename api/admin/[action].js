@@ -20,7 +20,7 @@ async function admin(req) {
 
 // TEMPORARY deployment diagnostics (GET, ?key=ADMIN_KEY, returns metrics only, never document data). Remove after the first real test.
 const claveOk = (k) => { const a = Buffer.from(process.env.ADMIN_KEY || ''); const b = Buffer.from(String(k || '')); return a.length > 0 && a.length === b.length && timingSafeEqual(a, b); };
-async function medir(fn) { const t = Date.now(); try { return { ok: true, ms: Date.now() - t, ...(await fn()) }; } catch (e) { return { ok: false, ms: Date.now() - t, code: e.code, message: String(e.message).slice(0, 160) }; } }
+async function medir(fn) { const t = Date.now(); try { return { ok: true, ms: Date.now() - t, ...(await fn()) }; } catch (e) { return { ok: false, ms: Date.now() - t, code: e.code, message: String(e.message).slice(0, 160), detail: String(e.detail ?? '').slice(0, 400) }; } }
 
 export default route({
   'GET:probar': async (req, res) => {
