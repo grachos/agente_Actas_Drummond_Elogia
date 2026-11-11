@@ -8,6 +8,7 @@ import { sanearDatos } from '../../src/actas/validarEdicion.js';
 import { armarPdfFinal, nombreFinal } from '../../src/actas/final.js';
 import { renderActaPdf } from '../../src/actas/pdf.js';
 import { getConfigTipo } from '../../src/store/config.js';
+import { reporteExcel } from '../../src/reporte.js';
 
 const cargar = async (id) => { const a = await A.obtener(id); if (!a) throw new ApiError('NOT_FOUND', 'No existe esa acta.', { status: 404 }); return a; };
 const pdf = (res, buf, nombre) => { res.setHeader('content-type', 'application/pdf'); res.setHeader('content-disposition', `inline; filename="${nombre}"`); res.setHeader('cache-control', 'private, no-store'); res.status(200).send(buf); };
@@ -28,6 +29,14 @@ export default route({
     res.status(200).json({ ok: true, ...(await A.aprobar(ids, u.id)) });
   },
   'POST:desaprobar': async (req, res) => { await requireSession(req); await A.desaprobar(intParam(body(req).id)); res.status(200).json({ ok: true }); },
+  'GET:reporte': async (req, res) => {
+    await requireSession(req);
+    const buf = await reporteExcel(await A.listarAprobadas());
+    res.setHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('content-disposition', `attachment; filename="reporte_actas_${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })}.xlsx"`);
+    res.setHeader('cache-control', 'private, no-store');
+    res.status(200).send(buf);
+  },
   'GET:soporte': async (req, res) => { await requireSession(req); const a = await cargar(intParam(req.query.id)); pdf(res, await descargarSoporte(a.remesa), `${a.remesa}_soporte.pdf`); },
   // Exact acta as it will be printed (without the support), for the review screen.
   'GET:vistapdf': async (req, res) => {

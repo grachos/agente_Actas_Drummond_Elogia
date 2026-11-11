@@ -33,13 +33,14 @@ Navegador (public/) ── /api/* (funciones Vercel, Node 22, 60 s) ──┬─
 | `src/lectura/leer.js` | Envía el PDF a Claude (herramienta `registrar_lectura`, esquema fijo). |
 | `src/validacion.js` | Validaciones de negocio y comparación de las 2 lecturas (código, no IA). |
 | `src/procesar.js` | Pipeline por remesa: descarga → 2 lecturas → validar → guardar. Límite 52 s. |
+| `src/reporte.js` | Reporte Excel de las actas aprobadas (`exceljs`). |
 | `src/actas/` | `html.js` (plantilla del acta), `pdf.js` (Chromium), `datos.js` (formatos), `validarEdicion.js`, `final.js` (acta + soporte). |
 | `src/store/` | Acceso a MySQL (usuarios, actas/lotes, config por tipo, cookies WAF). `src/db.js` crea el esquema solo. |
 | `src/lib/` | `numeros.js` (dinero en enteros), `fechas.js` (Bogotá). |
 | `db/*.sql` | Esquema (idempotente, se aplica al primer uso). |
 | `public/` | Front estático: `index.html`+`app.js` (aplicación), `config.html`+`config.js` (configuración). |
 | `scripts/` | `dev-server.mjs` (servidor local tipo Vercel), `migrate.mjs`, `seed-config.mjs`, `demo-acta.mjs`. |
-| `tests/` | 21 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
+| `tests/` | 23 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
 
 ## Flujo funcional y estados
 1. **Entrada**: lote de **remesas** (una por línea, o Excel con columna `remesa`); ya **no se pasa consecutivo**. Máx. 500 por lote. Una remesa que ya existe en cualquier lote se omite (una acta por remesa).
@@ -47,7 +48,8 @@ Navegador (public/) ── /api/* (funciones Vercel, Node 22, 60 s) ──┬─
 3. **Revisión** (una sola pantalla): soporte de Silogtran a la izquierda (visor PDF del navegador), a la derecha pestañas **Datos** (editables, alertas clicables que saltan a la página de origen) y **Vista previa del acta** (el PDF real del acta, sin el soporte). Editar una acta aprobada la devuelve a `LISTA`.
 4. **Aprobar**: individual (Ctrl+Enter = aprobar y pasar a la siguiente; Alt+↑/↓ navegar) o por selección (solo las `LISTA`; las `REVISAR` se aprueban una por una). Queda registrado quién y cuándo. **Al aprobar se asigna el consecutivo** `TIPO-NNN-AA` (prefijo de la orden + número de 3 cifras del contador del tipo + 2 últimas cifras del año de Bogotá), dentro de una transacción (secuencial, sin repetidos aunque aprueben varios a la vez); el contador sube en 1. Si el tipo no tiene contador configurado no se puede aprobar (mensaje). Un acta que ya tiene número lo conserva al re-aprobarla tras editarla. El consecutivo no se escribe a mano.
 5. **Descargar**: solo actas `APROBADA`. Un PDF final = acta + soporte sin tocar, nombre = el **consecutivo completo** (ej. `CPLTD-068-26.pdf`; decisión del dueño 2026-11-11). Varias → ZIP armado en el navegador (3 en paralelo).
-6. **Correo (Microsoft 365)**: pendiente (I7).
+6. **Reporte en Excel**: botón con el ícono de Excel en la barra superior (tooltip «Generar reporte en Excel») que descarga `reporte_actas_AAAA-MM-DD.xlsx` con **todas las actas registradas (aprobadas)**, en orden de aprobación, con 3 columnas: **Número de remesa** (texto, conserva el cero inicial), **Total acta** (suma del «valor total facturado» de sus líneas, número con formato `$ #,##0`) y **Número de consecutivo del acta**. Se arma en el servidor con `exceljs` (`src/reporte.js`, cargado solo al pedir el reporte).
+7. **Correo (Microsoft 365)**: pendiente (I7).
 
 ## Silogtran
 - Instancia: `https://construproyec.colombiasoftware.net` (`SILOG_BASE_URL`).
@@ -115,7 +117,7 @@ Correcciones a los modelos ya aplicadas en la plantilla: sin el «JUN(» suelto;
 `usuarios` (identidad Silogtran, sin clave) · `lotes` · `actas` (remesa, consecutivo asignado al aprobar, tipo, estado, error, `lectura`/`alertas`/`datos` JSON, aprobado_por/en) · `acta_tipos` (config JSON por tipo + `_COMUN` con logo/firma) · `consecutivos` (tipo → próximo número; inicial CPLTD 68, CMLTD 75; los demás los configura el dueño) · `waf_cookies` · `login_intentos` · `schema_migrations` (cada `db/*.sql` se aplica una vez). El esquema se crea solo (`src/db.js`, idempotente) y, si la variable `ACTAS_SEED` trae JSON `{TIPO:{...}}`, se **agregan los tipos que falten** (nunca sobrescribe lo ya editado en la BD).
 
 ## API (todas exigen sesión salvo health y login)
-`GET /api/health` · `POST /api/auth/login|logout`, `GET /api/auth/me` · `POST /api/lotes/crear`, `GET /api/lotes/listar|ver` · `POST /api/actas/procesar|guardar|aprobar|desaprobar`, `GET /api/actas/obtener|soporte|vistapdf|pdf` · `/api/admin/config|tipo|consecutivo|imagen` (basta la sesión: **cualquier usuario puede cambiar la configuración**, decisión del dueño 2026-11-11; ya no hay clave de administrador). La sesión es una cookie firmada (`TOKEN_SECRET`, 8 h). Los datos editados se validan en el servidor (`validarEdicion.js`).
+`GET /api/health` · `POST /api/auth/login|logout`, `GET /api/auth/me` · `POST /api/lotes/crear`, `GET /api/lotes/listar|ver` · `POST /api/actas/procesar|guardar|aprobar|desaprobar`, `GET /api/actas/obtener|soporte|vistapdf|pdf|reporte` · `/api/admin/config|tipo|consecutivo|imagen` (basta la sesión: **cualquier usuario puede cambiar la configuración**, decisión del dueño 2026-11-11; ya no hay clave de administrador). La sesión es una cookie firmada (`TOKEN_SECRET`, 8 h). Los datos editados se validan en el servidor (`validarEdicion.js`).
 
 ## Configuración y despliegue
 - **Variables** (ver `.env.example`): `DATABASE_URL`, `TOKEN_SECRET`, `ANTHROPIC_API_KEY`, `SILOG_BASE_URL`, `SOPORTE_SUFIJO`; opcionales `IA_MODELO`, `DATABASE_SSL`, `WAF_*`, `SILOG_TIMEOUT_SEC`; correo (I7) por definir. Solo local: `ACTAS_MOCK=1`.
@@ -127,7 +129,7 @@ Correcciones a los modelos ya aplicadas en la plantilla: sin el «JUN(» suelto;
 ## Desarrollo local
 ```bash
 npm install
-npm test                                   # 21 pruebas (las de BD con TEST_DATABASE_URL=mysql://...)
+npm test                                   # 23 pruebas (las de BD con TEST_DATABASE_URL=mysql://...)
 ACTAS_MOCK=1 DATABASE_URL=mysql://... TOKEN_SECRET=x WAF_CHROME_PATH=/ruta/chrome node scripts/dev-server.mjs
 ```
 Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtures/lecturas/<remesa>.json` y `fixtures/config.local.json` (cargar con `scripts/seed-config.mjs`) en vez de Silogtran/IA; login de prueba: cualquier usuario con clave `demo`. Ignorado en Vercel.
@@ -156,3 +158,4 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 - 2026-11-11: cantidad facturada = `PO Price ÷ (Extended Amt ÷ Quantity)` para todos los tipos (1 normalmente; 2, 3… 20 si el valor del medio es esas veces el valor unitario); ejemplo del dueño: total 200, cantidad 4, medio 150 → unitario 50, facturada 3, valor a facturar 150. DEIPO usa la misma lógica (el modelo con «30 de la orden / 25 facturadas» es solo ilustrativo). Una versión anterior de esta regla estaba invertida y se corrigió.
 - 2026-11-11: **(1)** la configuración la puede cambiar cualquier usuario (sin clave de administrador); **(2)** solo se genera acta si el Bill de Inland dice «SEGÚN TRF» en «COST CENTER», si no la remesa se ignora; **(3)** el consecutivo ya no se pasa por Excel ni a mano: se parametriza por tipo en Configuración (inicio CPLTD 68 → `CPLTD-068-26`, CMLTD 75 → `CMLTD-075-26`; el resto lo configura el dueño) y se compone `prefijo + consecutivo + 2 cifras del año`.
 - 2026-11-11: la lógica del consecutivo queda **tal como está** (confirmado: el número configurado lo recibe la próxima acta; sin reinicio automático por año); los **archivos descargados se llaman como el consecutivo completo** (`CPLTD-068-26.pdf`).
+- 2026-11-11: **reporte en Excel** de lo registrado (aprobado): número de remesa, total del acta (suma de sus líneas) y número de consecutivo; botón con ícono de Excel y tooltip «Generar reporte en Excel». Nota técnica: el CSP prohíbe estilos en línea (`style="…"`), por eso las páginas usan clases CSS.

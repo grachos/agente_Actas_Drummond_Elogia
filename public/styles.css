@@ -43,3 +43,12 @@ dialog { border: 1px solid var(--line); border-radius: 10px; padding: 0; backgro
 dialog .card { width: min(560px, 92vw); border: 0; } .row { display: flex; gap: 8px; justify-content: flex-end; }
 
 .form fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 8px; margin: 0; } .form legend { font-weight: 600; padding: 0 6px; }
+
+button.icon { padding: 4px 6px; line-height: 0; display: inline-flex; align-items: center; }
+button.icon:hover { border-color: #1d6f42; }
+
+/* configuration page (no inline styles: the CSP forbids them) */
+body.scroll { overflow: auto; }
+.cfg { max-width: 900px; margin: 16px auto; padding: 0 16px; display: grid; gap: 16px; }
+.cfgtipos { display: grid; gap: 16px; }
+.card.wide { width: auto; }

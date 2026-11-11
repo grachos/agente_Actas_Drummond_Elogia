@@ -28,6 +28,12 @@ export function construirDatos(lectura, lineas, { hoy, objetoDeOrden = false }) 
 // Lines of an acta; older rows stored a single line in flat fields.
 export const lineasDe = (d) => d.lineas ?? [{ linea: d.linea, descripcion: d.descripcion, cantidadOrden: d.cantidadOrden, cantidadFacturada: d.cantidadFacturada, valorUnitario: d.valorUnitario, valorTotal: d.valorTotal }];
 
+// Total of an acta = sum of the «valor total facturado» of its lines, in pesos (cents-exact).
+export function totalActa(d) {
+  const cents = lineasDe(d).reduce((acc, l) => acc + Math.round(Number(String(l.valorTotal ?? '0').replace(/\./g, '').replace(',', '.')) * 100 || 0), 0);
+  return cents / 100;
+}
+
 // "1.296.000" -> cents; "2,00" -> hundredths
 const pesos = (t) => { const n = Number(String(t).replace(/\./g, '').replace(',', '.')); return Number.isFinite(n) ? Math.round(n * 100) : null; };
 // After an edit: total = facturada × unitario (null result leaves the total untouched).

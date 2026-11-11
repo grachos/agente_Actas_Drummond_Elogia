@@ -83,4 +83,8 @@ export async function aprobar(ids, usuarioId, anio = hoyBogota().anio) {
   }
   return res;
 }
+// Registered = approved: remesa, acta number and data (for the Excel report), in approval order.
+export async function listarAprobadas() {
+  return (await q("SELECT remesa, consecutivo, datos FROM actas WHERE estado = 'APROBADA' AND consecutivo <> '' ORDER BY aprobado_en, id")).map((r) => ({ ...r, datos: JSON.parse(r.datos) }));
+}
 export const desaprobar = (id) => q("UPDATE actas SET estado = 'LISTA', aprobado_por = NULL, aprobado_en = NULL WHERE id = ? AND estado = 'APROBADA'", [id]);

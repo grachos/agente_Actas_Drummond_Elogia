@@ -18,6 +18,14 @@ $('#loginForm').addEventListener('submit', async (e) => {
   try { const f = new FormData(e.target); await api('/api/auth/login', { method: 'POST', body: { usuario: f.get('usuario'), clave: f.get('clave') } }); e.target.reset(); await start(); }
   catch (err) { $('#loginError').textContent = err.message; } finally { $('#loginBtn').disabled = false; }
 });
+$('#xlsBtn').addEventListener('click', async () => {
+  try {
+    const r = await fetch('/api/actas/reporte');
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || 'No se pudo generar el reporte.');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob());
+    a.download = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '')?.[1] || 'reporte_actas.xlsx'; a.click();
+  } catch (e) { alert(e.message); }
+});
 $('#logout').addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }).catch(() => {}); showLogin(); });
 
 async function start() {
