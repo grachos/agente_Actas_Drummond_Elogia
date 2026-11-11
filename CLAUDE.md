@@ -152,6 +152,11 @@ Hecho y probado **en local** (MariaDB real + navegador automatizado + datos de e
 **NO verificado todavía (necesita credenciales o despliegue):** acceso real a Silogtran (login y WAF desde Vercel), descarga del soporte desde Vercel, lectura real con Claude (precisión sobre los escaneados), conexión a Hostinger, Chromium en Vercel (tamaño y tiempo del PDF), visor de PDF nativo del navegador en la pantalla de revisión (el navegador automatizado no tiene visor; probar en Chrome/Edge real; si falla, usar PDF.js), ZIP y lectura de Excel (las librerías vienen de cdnjs).
 **Falta construir:** acta DEIPO (formato y firmas propios; necesita muestra), correo Microsoft 365 (I7), carga de la configuración por tipo en la BD real, tope de remesas por lote y manual de uso.
 
+## Infraestructura creada (2026-11-11)
+- **Hostinger MySQL**: base `u279856486_actas` con usuario propio `u279856486_actasapp` (host `srv2184.hstgr.io:3306`, acceso remoto `%`, asignada al dominio `gestionhotel.techcol-service.cc` solo como metadato). No se tocó ninguna de las otras 4 bases de la cuenta. La clave solo existe como variable sensible en Vercel (no está en el repo).
+- **Vercel**: proyecto `agente_actas_drummond` (team `graziany-gd`, `prj_0EexKLn2quLo3rMiViZ5G6wYN2RQ`), ligado a este repo; **la rama de producción es hoy `claude/blissful-cray-f70po1`** (cada push a esa rama despliega a producción). Variables: `DATABASE_URL`, `TOKEN_SECRET`, `ADMIN_KEY` (sensibles), `SILOG_BASE_URL`, `SOPORTE_SUFIJO`, `ACTAS_SEED` (siembra única de los valores fijos por tipo; **borrarla tras el primer arranque**). Falta `ANTHROPIC_API_KEY` (la pone el dueño). La protección de Vercel (SSO) está activa para las URL `*.vercel.app`: el equipo no podrá entrar hasta desactivarla o usar un dominio propio.
+- El esquema de la BD se crea solo al primer uso (`src/db.js`); la siembra de `ACTAS_SEED` solo corre si `acta_tipos` está vacía. El logo y la firma se suben en `/config.html` (requiere sesión + `ADMIN_KEY`).
+
 ## Preguntas abiertas (preguntar al dueño; no asumir)
 1. Hostinger: motor y datos de conexión (host, puerto, base, usuario; clave solo como variable de entorno) y acceso remoto habilitado para cualquier origen.
 2. Credenciales para correo (app de Azure y buzón remitente), cuando se llegue a I7.
