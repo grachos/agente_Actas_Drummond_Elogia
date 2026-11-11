@@ -157,6 +157,14 @@ Hecho y probado **en local** (MariaDB real + navegador automatizado + datos de e
 - **Vercel**: proyecto `agente_actas_drummond` (team `graziany-gd`, `prj_0EexKLn2quLo3rMiViZ5G6wYN2RQ`), ligado a este repo; **la rama de producción es hoy `claude/blissful-cray-f70po1`** (cada push a esa rama despliega a producción). Variables: `DATABASE_URL`, `TOKEN_SECRET`, `ADMIN_KEY` (sensibles), `SILOG_BASE_URL`, `SOPORTE_SUFIJO`, `ACTAS_SEED` (siembra única, ya ejecutada el 2026-11-11 y vaciada a `{}`; se puede borrar). Falta `ANTHROPIC_API_KEY` (la pone el dueño). La protección de Vercel (SSO) está activa para las URL `*.vercel.app`: el equipo no podrá entrar hasta desactivarla o usar un dominio propio.
 - El esquema de la BD se crea solo al primer uso (`src/db.js`); la siembra de `ACTAS_SEED` solo corre si `acta_tipos` está vacía. El logo y la firma se suben en `/config.html` (requiere sesión + `ADMIN_KEY`).
 
+## Verificado en Vercel (2026-11-11, con la clave de Anthropic ya cargada)
+- `/api/health`: variables presentes, BD de Hostinger conectada, esquema creado y valores fijos sembrados (CMLTD, CPLTD, EDLTD).
+- Descarga del soporte desde Vercel por la URL pública: OK (370.552 bytes para `0101219771`), sin reto WAF.
+- Lectura real con Claude (`claude-sonnet-5-5`, PDF directo, **sin** `tool_choice` forzado: el modelo lo rechaza): `0101219771` y `0101219749` → tipo CPLTD, validaciones sin alertas, páginas de origen correctas (remesa 1, Bill 2, orden de salida 3, orden 5/6).
+- La remesa `0101219775` en el servidor devuelve el **mismo PDF que 0101219771** (CPLTD): la validación lo bloqueó correctamente (remesa leída ≠ solicitada). Revisar con el dueño qué hay realmente bajo ese nombre; el CMLTD de muestra aún no se ha leído con la IA real.
+- Generación del PDF del acta con Chromium en Vercel: OK (≈52 KB).
+**Aún sin verificar:** login con usuario real de Silogtran, visor de PDF en el navegador, ZIP/Excel, tiempo de un lote real, rendimiento con 100–300 remesas.
+
 ## Preguntas abiertas (preguntar al dueño; no asumir)
 1. Hostinger: motor y datos de conexión (host, puerto, base, usuario; clave solo como variable de entorno) y acceso remoto habilitado para cualquier origen.
 2. Credenciales para correo (app de Azure y buzón remitente), cuando se llegue a I7.
