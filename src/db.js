@@ -24,8 +24,9 @@ async function ensureSchema() {
     const aplicadas = new Set(hechas.map((r) => r.name));
     for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
       if (aplicadas.has(f)) continue;
-      await cx.query(readFileSync(new URL(f, dir), 'utf8'));
+      const [res] = await cx.query(readFileSync(new URL(f, dir), 'utf8'));
       await cx.query('INSERT IGNORE INTO schema_migrations (name) VALUES (?)', [f]);
+      console.log(`[db] migración ${f} aplicada; filas afectadas: ${JSON.stringify((Array.isArray(res) ? res : [res]).map((x) => x?.affectedRows ?? null))}`); // visible in the Vercel logs
     }
     if (process.env.ACTAS_SEED) {
       // adds the types that are missing; never overwrites values already edited in the DB

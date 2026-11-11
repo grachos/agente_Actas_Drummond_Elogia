@@ -52,6 +52,14 @@ test('actas store: lote, atomic claim, numbering at approval, edit rules', { ski
   const nums = [(await A.obtener(p1.id)).consecutivo, (await A.obtener(p2.id)).consecutivo].sort();
   assert.deepEqual(nums, ['DEIPO-005-26', 'DEIPO-006-26']);
 
+  // the one-time cleanup migration removes exactly the test acta (remesa + hand-typed number) and nothing else
+  await q("INSERT INTO actas (lote_id, usuario_id, remesa, consecutivo, estado) VALUES (?, ?, '0101219749', 'GGOMEZ19', 'APROBADA')", [lote.loteId, u.id]);
+  const antes = (await q('SELECT COUNT(*) AS n FROM actas'))[0].n;
+  const cx = await mysql.createConnection({ uri: url, multipleStatements: true });
+  await cx.query(readFileSync(new URL('../db/004_borrar_acta_prueba.sql', import.meta.url), 'utf8')); await cx.end();
+  assert.equal((await q('SELECT COUNT(*) AS n FROM actas'))[0].n, antes - 1);
+  assert.equal((await q("SELECT COUNT(*) AS n FROM actas WHERE consecutivo = 'GGOMEZ19'"))[0].n, 0);
+
   // a stale PROCESANDO (function killed) shows as ERROR/TIMEOUT after 3 minutes and can be claimed again
   assert.equal(await A.reclamar(d.id), true); // d is still LISTA (it could not be approved without a DEIPO counter)
   await q("UPDATE actas SET actualizado_en = NOW() - INTERVAL 5 MINUTE WHERE id = ?", [d.id]);
