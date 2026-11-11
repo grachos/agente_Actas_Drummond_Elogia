@@ -94,14 +94,16 @@ Modelos entregados por el dueño en Word (ya diligenciados; no están en el repo
 | Número de consecutivo (ej. `CPLTD-053-26`) | Excel o pantalla |
 | Orden de compra N° | página de orden de compra |
 | Línea, descripción, cantidad de la orden, valor unitario | línea de la orden indicada en el Bill of Inland |
-| Cantidad de la orden y cantidad facturada (las dos columnas llevan **el mismo número**) | valor total de la línea ÷ valor unitario (regla del dueño 2026-11-11: si el total es el doble del valor del viaje → 2, si el triple → 3…). Debe dar entero exacto o va a revisión; cruzar con la cantidad impresa en la orden (`9.00EA`). **Pendiente confirmar** el valor total facturado: ¿unitario × cantidad (CMLTD muestra: 9 × 6.388.875 = 57.499.875) o el unitario? |
-| Fecha de inicio de los servicios | fecha de despacho (remesa / Bill of Inland) |
-| Fecha de terminación | **pendiente**: candidata = fecha del sello de recibido/entrada del Bill (CMLTD: 03/09/2026); en 3 de 4 modelos Word = inicio |
+| Cantidad de la orden | la cantidad **impresa en la línea de la orden** (ej. `4.00EA` → `4,00`); validar que total de la línea ÷ precio unitario = esa cantidad (CPLTD L7: 18,260,868 ÷ 4,565,217 = 4) |
+| Valor unitario | el `PO Price` impreso en la línea (ej. 4.565.217), nunca recalculado a mano |
+| Cantidad facturada (**N**) | 1, 2, 3… = cuántas veces el valor del viaje cubre esta remesa (regla del dueño 2026-11-11: si «el valor» es el doble del unitario → 2). **Origen de «el valor» sin definir** (ver preguntas); mientras tanto 1 por defecto, editable en la revisión, y nunca mayor que la cantidad de la orden |
+| Valor total facturado | **N × valor unitario** (CPLTD L7 con N=2 → 9.130.434) |
+| Fecha de inicio **y** de terminación de los servicios | la misma: `DATE OF DISPATCH` del Bill of Inland (día/mes/año), confirmado por el dueño 2026-11-11 |
 | Sede | fija por tipo (CMLTD/EDLTD/DEIPO → Mina; CPLTD → Puerto), validada contra el encabezado de la orden (**confirmar**) |
 | Documentos adjuntos | `<código Bill of Inland> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
 | Fecha del acta y cierre en letras («a los N días del mes de MES del año AAAA») | **la misma fecha**: la de creación del acta (hoy, America/Bogota), editable en la revisión (confirmado 2026-11-10 y 2026-11-11); el modelo EDLTD traía «2025», error a corregir |
 
-Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA VEHICULO TIPO: <tipo> RUTA: <ruta> TIPO DE CARGA: <carga>` (sin la jurisdicción, como en los modelos).
+Descripción de la línea en el acta: **tal cual** como aparece en la orden (confirmado 2026-11-11; incluye vehículo, ruta y tipo de carga; la jurisdicción no se copia por ser un dato aparte en la orden, como en los modelos). Se revisa en la pantalla de revisión.
 
 **Correcciones a los modelos pedidas por el dueño** (aplicar en las plantillas):
 - quitar el «JUN(» suelto antes de «(ej: mails internos…)» y restaurar ese texto de ejemplo completo y separado de la lista de adjuntos;
@@ -132,9 +134,8 @@ Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA
 `SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. Valor total facturado del acta: ¿cantidad × unitario (CMLTD muestra: 9 → 57.499.875) o solo el unitario? En DEIPO el modelo traía cantidades distintas (22 de la orden / 20 facturadas): ¿aplica también la regla de «mismo número»?
-2. Fecha de terminación: ¿igual al despacho, la del sello de recibido, o se digita?
-3. Contrato (DCI): ¿se lee de la orden (`DCI-2410B`) o es fijo por tipo (`DCI-2418`)? AFE: ¿siempre `N/A`?
-4. Descripción de la línea: ¿copiada tal cual de la orden o con el formato del modelo?
-5. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
-6. Faltan muestras reales de DEIPO y EDLTD y una poco legible.
+1. **Cantidad facturada**: ¿de dónde sale «el valor» que es 1, 2 o 3 veces el valor unitario? (¿valor del flete de la remesa en Silogtran, una columna del Excel, o se digita en la revisión?)
+2. Contrato (DCI): ¿se lee de la orden (`DCI-2410B` en CMLTD) o es fijo por tipo (`DCI-2418` en el modelo)? AFE: ¿siempre `N/A`?
+3. Sede: ¿fija por tipo (CPLTD = Puerto, los demás = Mina)?
+4. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
+5. Faltan muestras reales de DEIPO y EDLTD y una poco legible.
