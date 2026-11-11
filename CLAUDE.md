@@ -52,20 +52,25 @@ Escaneado con EPSON Scan, 200 ppp, **sin capa de texto** (imágenes CCITT blanco
 |---|---|---|
 | Remesa terrestre de carga (3 copias en una hoja) | «REMESA TERRESTRE DE CARGA», `No.` | número de remesa, fecha (año/mes/día), placa, conductor, remitente, destinatario, origen/destino |
 | Bill of Inland | título «BILL OF INLAND» | `# BILL OF INLAND` (ej. `SMR025SEP26`), `CARGO CONSIGNMENT` (= remesa), `DATE OF DISPATCH`, placa, `PO. TRANSPORT` (ej. `500284486A L8` = orden + **línea 8**) |
-| Orden de salida Drummond | «ORDEN DE SALIDA - PUERTO DRUMMOND» (u otra sede) | sede, fecha, placa, sello de recibido |
+| Orden de salida Drummond (**opcional**: no viene en CMLTD) | «ORDEN DE SALIDA - PUERTO DRUMMOND» (u otra sede) | sede, fecha, placa, sello de recibido |
 | Transport Request Form | «TRANSPORT REQUEST FORM» | `TRF NUMBER`, fecha |
 | Orden de compra | «Purchase Order» **o** «Orden de Compra» (viene en inglés o español) | número con prefijo (`CPLTD-500284486A`, `CMLTD-0100443504`), líneas: n.º de línea, descripción (vehículo tipo, ruta, tipo de carga, jurisdicción), cantidad, precio unitario, total |
 
-Todos los PDF traen la página de la orden de compra; **su prefijo decide el tipo de acta**. Puede venir solo una página de la orden (la que contiene la línea usada).
+Todos los PDF traen la página de la orden de compra; **su prefijo decide el tipo de acta**. Puede venir solo una página de la orden (la que contiene la línea usada). Número y orden de páginas varían (CPLTD 5 páginas con orden de salida; CMLTD 4, sin orden de salida y con sellos de bodega/portería en el Bill).
+
+### Muestras analizadas
+- **CPLTD** `0101219771`: orden `CPLTD-500284486A`, 4 líneas; Bill → `500284486A L8` = línea `8- 1` (4 × 4.536.000 = 18.144.000). Bill `SMR025SEP26`.
+- **CMLTD** `0101219775`: «Orden de Compra» (español) `CMLTD-0100443504`, una línea `1- 1` «Transporte tubería Concreto 24" & 36" – Agosto 2026, Tipo de Vehículo: Cama Alta, Ruta: Medellín - ED», cantidad 9, precio 6,388,875.00, total 57,499,875.00. Bill `MED003SEP26` → `0100443504 L1` (**sin prefijo**); despacho 02/09/2026; sellos de bodega/portería 03/09/2026; placa `SZK367`.
+- Hallazgos: (a) el `L<n>` del Bill coincide con el `Lín-Env` de la orden en 2 de 2 muestras; (b) la descripción de la línea **no tiene formato único** (CPLTD «VEHICULO TIPO/RUTA/TIPO DE CARGA»; CMLTD texto libre) → se transcribe del PDF y se revisa; (c) el conductor difiere entre remesa y Bill en CMLTD → no se valida; (d) TRF de CMLTD poco legible (número tapado, `PO TRANSPORT` sin cero inicial); (e) la orden CMLTD cita `DCI-2410B` y el modelo de acta dice `DCI-2418` → el DCI parece variar por orden; (f) comprador de la orden coincide con el fijo del acta; sede «Mina Pribbenow» (CMLTD) / «Puerto Drummond» (CPLTD) sugiere sede fija por tipo.
 
 ## Lectura y validaciones (lo más delicado del proyecto)
 - Rasterizar cada página (≥200 ppp) y leerla con un modelo de **visión** con salida JSON de esquema fijo; cada campo con su valor, la página de origen y `null` si no se lee (prohibido adivinar). Dos lecturas independientes de los campos críticos (orden de compra, línea, cantidad, precio, total, remesa, Bill of Inland, fecha); si difieren → revisión.
 - Validaciones por código (no por IA); cualquier fallo marca el campo y bloquea la generación automática:
   - remesa leída (remesa y `CARGO CONSIGNMENT`) = remesa solicitada = nombre del archivo;
   - prefijo de la orden ∈ {DEIPO, CMLTD, CPLTD, EDLTD};
-  - la orden del Bill of Inland coincide con la de la página de orden de compra;
-  - la línea indicada existe en la página y **cantidad × precio = total** de esa línea (detecta dígitos mal leídos);
-  - placa igual en remesa, Bill of Inland y orden de salida; formato `AAA999`;
+  - la orden del Bill of Inland coincide con la de la página de orden de compra **comparando sin prefijo** (Bill `0100443504 L1` ↔ `CMLTD-0100443504`); el TRF solo informativo (puede perder ceros);
+  - la línea indicada existe en la página, **total ÷ precio unitario es un entero** y coincide con la cantidad impresa (detecta dígitos mal leídos);
+  - placa igual en remesa y Bill of Inland (y en la orden de salida si viene); formato `AAA999`; **no** validar el conductor;
   - fechas válidas y coherentes entre documentos; código Bill of Inland con forma `AAA999MMMAA`.
 - Números: la orden usa formato anglosajón (`4,536,000.00`); el acta usa formato colombiano (`4.536.000`, cantidades `1,00`). Convertir con enteros, nunca con flotantes.
 - La revisión humana es obligatoria en la primera versión, aunque todo valide.
@@ -89,12 +94,12 @@ Modelos entregados por el dueño en Word (ya diligenciados; no están en el repo
 | Número de consecutivo (ej. `CPLTD-053-26`) | Excel o pantalla |
 | Orden de compra N° | página de orden de compra |
 | Línea, descripción, cantidad de la orden, valor unitario | línea de la orden indicada en el Bill of Inland |
-| Cantidad facturada / valor total facturado | 1 por remesa → total = valor unitario (**supuesto, confirmar**) |
+| Cantidad de la orden y cantidad facturada (las dos columnas llevan **el mismo número**) | valor total de la línea ÷ valor unitario (regla del dueño 2026-11-11: si el total es el doble del valor del viaje → 2, si el triple → 3…). Debe dar entero exacto o va a revisión; cruzar con la cantidad impresa en la orden (`9.00EA`). **Pendiente confirmar** el valor total facturado: ¿unitario × cantidad (CMLTD muestra: 9 × 6.388.875 = 57.499.875) o el unitario? |
 | Fecha de inicio de los servicios | fecha de despacho (remesa / Bill of Inland) |
-| Fecha de terminación | **pendiente** (el sello de recibido no se lee; en 3 de 4 modelos = inicio) |
-| Sede | orden de salida / orden de compra (**confirmar** si es fija por tipo) |
+| Fecha de terminación | **pendiente**: candidata = fecha del sello de recibido/entrada del Bill (CMLTD: 03/09/2026); en 3 de 4 modelos Word = inicio |
+| Sede | fija por tipo (CMLTD/EDLTD/DEIPO → Mina; CPLTD → Puerto), validada contra el encabezado de la orden (**confirmar**) |
 | Documentos adjuntos | `<código Bill of Inland> BILL OF INLAND – TRF – ORDEN DE COMPRA <número>` |
-| Fecha del acta y cierre en letras («a los N días del mes de MES del año AAAA») | fecha en que se elabora el acta (día de generación, America/Bogota), editable en la revisión (confirmado 2026-11-10) |
+| Fecha del acta y cierre en letras («a los N días del mes de MES del año AAAA») | **la misma fecha**: la de creación del acta (hoy, America/Bogota), editable en la revisión (confirmado 2026-11-10 y 2026-11-11); el modelo EDLTD traía «2025», error a corregir |
 
 Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA VEHICULO TIPO: <tipo> RUTA: <ruta> TIPO DE CARGA: <carga>` (sin la jurisdicción, como en los modelos).
 
@@ -127,10 +132,9 @@ Descripción de la línea en el acta: `SERVICIO DE TRANSPORTE TERRESTRE DE CARGA
 `SILOG_BASE_URL`, `SILOG_USER`, `SILOG_PASSWORD`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_KEY`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `IA_MODELO`, credenciales del proveedor de correo. Opcionales: `WAF_CHROME_PATH`, `WAF_WAIT_SEC`, `SILOG_TIMEOUT_SEC`.
 
 ## Preguntas abiertas (preguntar al dueño; no asumir)
-1. Línea de la orden: ¿siempre sale del `L<n>` del Bill of Inland?
-2. Fecha de terminación de los servicios: ¿igual a la de despacho, o se digita?
-3. Contrato (DCI) y AFE: ¿fijos por tipo?
-4. Cantidad facturada: ¿siempre 1 por remesa?
-5. Sede: ¿fija por tipo o leída del PDF?
-6. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
-7. Faltan muestras reales de DEIPO, CMLTD y EDLTD y una poco legible.
+1. Valor total facturado del acta: ¿cantidad × unitario (CMLTD muestra: 9 → 57.499.875) o solo el unitario? En DEIPO el modelo traía cantidades distintas (22 de la orden / 20 facturadas): ¿aplica también la regla de «mismo número»?
+2. Fecha de terminación: ¿igual al despacho, la del sello de recibido, o se digita?
+3. Contrato (DCI): ¿se lee de la orden (`DCI-2410B`) o es fijo por tipo (`DCI-2418`)? AFE: ¿siempre `N/A`?
+4. Descripción de la línea: ¿copiada tal cual de la orden o con el formato del modelo?
+5. Usuarios de la aplicación, remesas por lote, cuenta y destinatarios de correo, nombre del archivo final, fecha de entrega.
+6. Faltan muestras reales de DEIPO y EDLTD y una poco legible.
