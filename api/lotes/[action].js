@@ -10,9 +10,9 @@ export default route({
     const u = await requireSession(req);
     const items = body(req).items;
     if (!Array.isArray(items) || !items.length || items.length > MAX_ITEMS) throw new ApiError('PARAM_INVALID', `Envía entre 1 y ${MAX_ITEMS} remesas.`, { status: 400 });
-    const limpias = items.map((x) => ({ remesa: String(x?.remesa ?? '').trim(), consecutivo: String(x?.consecutivo ?? '').trim() }));
-    const malas = limpias.filter((x) => !remesaValida(x.remesa) || !x.consecutivo || x.consecutivo.length > 50);
-    if (malas.length) throw new ApiError('PARAM_INVALID', `Hay ${malas.length} fila(s) con remesa o consecutivo inválido (primera: «${malas[0].remesa}»).`, { status: 400 });
+    const limpias = [...new Set(items.map((x) => String(x?.remesa ?? '').trim()))].map((remesa) => ({ remesa })); // only the remesa number; the acta number comes from Configuración
+    const malas = limpias.filter((x) => !remesaValida(x.remesa));
+    if (malas.length) throw new ApiError('PARAM_INVALID', `Hay ${malas.length} remesa(s) inválida(s) (primera: «${malas[0].remesa}»); deben ser solo dígitos.`, { status: 400 });
     res.status(200).json({ ok: true, ...(await A.crearLote(u.id, limpias)) });
   },
   'GET:listar': async (req, res) => { await requireSession(req); res.status(200).json({ ok: true, lotes: await A.listarLotes() }); },

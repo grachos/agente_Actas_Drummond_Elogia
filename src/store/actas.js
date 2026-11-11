@@ -1,4 +1,5 @@
 import { q, db } from '../db.js';
+import { hoyBogota } from '../lib/fechas.js';
 
 const J = (v) => (v == null ? null : JSON.stringify(v));
 const P = (v) => (v == null ? null : JSON.parse(v));
@@ -7,7 +8,8 @@ const TIMEOUT_MSG = 'Se agotó el tiempo al procesar; reintenta.';
 const destrabar = (r) => (r && r.atascada ? { ...r, estado: 'ERROR', codigo_error: 'TIMEOUT', mensaje_error: TIMEOUT_MSG } : r);
 const fila = (r) => r && { ...destrabar(r), lectura: P(r.lectura), alertas: P(r.alertas) ?? [], datos: P(r.datos) };
 
-// items: [{ remesa, consecutivo }]. Duplicated (remesa, consecutivo) pairs are skipped and reported.
+// items: [{ remesa }]. A remesa that already exists in any lote is skipped and reported (one acta per remesa). The acta number is
+// assigned later, when the acta is approved (see aprobar), so ignored or discarded remesas never burn a number.
 export async function crearLote(usuarioId, items) {
   const cx = await db().getConnection();
   try {
@@ -16,7 +18,7 @@ export async function crearLote(usuarioId, items) {
     const loteId = r.insertId;
     const creadas = []; const duplicadas = [];
     for (const it of items) {
-      const [x] = await cx.query('INSERT IGNORE INTO actas (lote_id, usuario_id, remesa, consecutivo) VALUES (?, ?, ?, ?)', [loteId, usuarioId, it.remesa, it.consecutivo]);
+      const [x] = await cx.query("INSERT INTO actas (lote_id, usuario_id, remesa, consecutivo) SELECT ?, ?, ?, '' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM actas WHERE remesa = ?)", [loteId, usuarioId, it.remesa, it.remesa]);
       (x.affectedRows ? creadas : duplicadas).push(it);
     }
     await cx.commit();
@@ -38,18 +40,47 @@ export async function obtener(id) {
 
 // Atomic claim: only one invocation can move an acta into PROCESANDO (double click / retries safe).
 export async function reclamar(id) {
-  const r = await q("UPDATE actas SET estado = 'PROCESANDO', codigo_error = NULL, mensaje_error = NULL WHERE id = ? AND (estado IN ('PENDIENTE','ERROR','REVISAR','LISTA') OR (estado = 'PROCESANDO' AND actualizado_en < NOW() - INTERVAL 3 MINUTE))", [id]);
+  const r = await q("UPDATE actas SET estado = 'PROCESANDO', codigo_error = NULL, mensaje_error = NULL WHERE id = ? AND (estado IN ('PENDIENTE','ERROR','REVISAR','LISTA','IGNORADA') OR (estado = 'PROCESANDO' AND actualizado_en < NOW() - INTERVAL 3 MINUTE))", [id]);
   return r.affectedRows === 1;
 }
 export const guardarResultado = (id, { tipo, estado, lectura, alertas, datos }) =>
   q('UPDATE actas SET tipo = ?, estado = ?, lectura = ?, alertas = ?, datos = ? WHERE id = ?', [tipo, estado, J(lectura), J(alertas), J(datos), id]);
+// The Bill of Inland does not say «SEGÚN TRF»: no acta is made (visible in the list; can be reprocessed).
+export const guardarIgnorada = (id, { tipo, lectura, mensaje }) => q("UPDATE actas SET tipo = ?, estado = 'IGNORADA', codigo_error = 'NO_SEGUN_TRF', mensaje_error = ?, lectura = ?, alertas = NULL, datos = NULL WHERE id = ?", [tipo ?? null, String(mensaje).slice(0, 500), J(lectura), id]);
 export const guardarError = (id, codigo, mensaje) => q("UPDATE actas SET estado = 'ERROR', codigo_error = ?, mensaje_error = ? WHERE id = ?", [codigo, String(mensaje).slice(0, 500), id]);
 
 // Human edits; an approved acta must be re-approved after any edit.
 export const guardarDatos = (id, datos) => q("UPDATE actas SET datos = ?, estado = IF(estado = 'APROBADA', 'LISTA', estado), aprobado_por = NULL, aprobado_en = NULL WHERE id = ? AND estado IN ('LISTA','REVISAR','APROBADA')", [J(datos), id]);
-export async function aprobar(ids, usuarioId) {
-  if (!ids.length) return 0;
-  const r = await q("UPDATE actas SET estado = 'APROBADA', aprobado_por = ?, aprobado_en = NOW() WHERE id IN (?) AND estado IN ('LISTA','REVISAR') AND datos IS NOT NULL", [usuarioId, ids]);
-  return r.affectedRows;
+const yy = (anio) => String(anio % 100).padStart(2, '0');
+
+// Approves one by one. The acta number (TIPO-NNN-YY) is taken from the per-type counter inside the same transaction, so numbers are
+// sequential and never repeated even if several people approve at once. An acta that already has a number keeps it (re-approval after an edit).
+export async function aprobar(ids, usuarioId, anio = hoyBogota().anio) {
+  await q('SELECT 1'); // makes sure the schema exists
+  const res = { aprobadas: 0, omitidas: 0, errores: [] };
+  for (const id of ids) {
+    const cx = await db().getConnection();
+    try {
+      await cx.beginTransaction();
+      const [[a]] = await cx.query('SELECT id, tipo, estado, datos FROM actas WHERE id = ? FOR UPDATE', [id]);
+      if (!a || !['LISTA', 'REVISAR'].includes(a.estado) || !a.datos) { await cx.rollback(); res.omitidas++; continue; }
+      const datos = JSON.parse(a.datos);
+      if (!datos.consecutivo) {
+        const [[c]] = await cx.query('SELECT siguiente FROM consecutivos WHERE tipo = ? FOR UPDATE', [a.tipo]);
+        if (!c) { await cx.rollback(); res.errores.push({ id, mensaje: `Configura el consecutivo de ${a.tipo} en Configuración antes de aprobar.` }); continue; }
+        datos.consecutivo = `${a.tipo}-${String(c.siguiente).padStart(3, '0')}-${yy(anio)}`;
+        await cx.query('UPDATE consecutivos SET siguiente = siguiente + 1 WHERE tipo = ?', [a.tipo]);
+      }
+      await cx.query("UPDATE actas SET estado = 'APROBADA', datos = ?, consecutivo = ?, aprobado_por = ?, aprobado_en = NOW() WHERE id = ?", [JSON.stringify(datos), datos.consecutivo, usuarioId, id]);
+      await cx.commit();
+      res.aprobadas++;
+    } catch (e) {
+      await cx.rollback().catch(() => {});
+      throw e;
+    } finally {
+      cx.release();
+    }
+  }
+  return res;
 }
 export const desaprobar = (id) => q("UPDATE actas SET estado = 'LISTA', aprobado_por = NULL, aprobado_en = NULL WHERE id = ? AND estado = 'APROBADA'", [id]);

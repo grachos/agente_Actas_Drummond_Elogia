@@ -2,7 +2,7 @@
 
 Aplicación web que genera las **actas de entrega** (DEIPO, CMLTD, CPLTD, EDLTD) a partir de remesas de Silogtran:
 
-1. Cargas remesas + consecutivo (Excel o a mano).
+1. Cargas remesas (Excel o a mano); el consecutivo de cada acta se asigna solo al aprobar, desde un contador por tipo en Configuración.
 2. El sistema baja el PDF de soporte de cada remesa desde Silogtran y lo **lee con IA** (Anthropic).
 3. Una persona **revisa** los datos junto al soporte, en una sola pantalla, y aprueba.
 4. Se genera **un solo PDF por remesa** (acta + soporte) para descargar o, más adelante, enviar por correo.
@@ -23,7 +23,7 @@ ACTAS_MOCK=1 node scripts/dev-server.mjs   # servidor local con datos de ejemplo
 ```
 
 ## Despliegue
-Vercel conectado a este repo (cada push a la rama de producción despliega). Variables requeridas: ver `.env.example`. La primera vez, entrar a `/config.html` (clave de administrador) para subir el logo, la firma y revisar los valores fijos de cada tipo.
+Vercel conectado a este repo (cada push a la rama de producción despliega). Variables requeridas: ver `.env.example`. La primera vez, entrar a `/config.html` () para subir el logo, la firma y revisar los valores fijos de cada tipo.
 
 ## Estado
 Funcionando en producción hasta la lectura con IA y el PDF; pendientes: probar una orden DEIPO real, correo Microsoft 365 y primer lote real. Ver «Pendientes» en `CLAUDE.md`.

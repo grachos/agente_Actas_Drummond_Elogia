@@ -12,10 +12,12 @@ test('final PDF = acta pages first, then the support untouched, in one file', as
   assert.equal(nombreFinal({ tipo: 'CPLTD', remesa: '0100000001' }), 'CPLTD_0100000001.pdf');
 });
 
-const ok = { consecutivo: 'C-1', ordenCompleta: 'CPLTD-1', adjuntos: 'A', fechaActa: '11/11/2026', fechaServicio: '02/09/2026',
+const ok = { ordenCompleta: 'CPLTD-1', adjuntos: 'A', fechaActa: '11/11/2026', fechaServicio: '02/09/2026',
   lineas: [{ linea: '12', descripcion: 'X', cantidadOrden: '3,00', cantidadFacturada: '2,00', valorUnitario: '1.296.000' }] };
 test('sanearDatos recomputes each line total, derives the closing date, allows a blank object and rejects bad input', () => {
-  const d = sanearDatos(ok);
+  const d = sanearDatos(ok, 'CPLTD-068-26');
+  assert.equal(d.consecutivo, 'CPLTD-068-26'); // kept from storage, never typed
+  assert.equal(sanearDatos({ ...ok, consecutivo: 'HACK' }).consecutivo, '');
   assert.equal(d.lineas[0].valorTotal, '2.592.000');
   assert.deepEqual(d.cierre, { dia: 11, mes: 11, anio: 2026 });
   assert.equal(sanearDatos({ ...ok, objeto: '' }).objeto, '');

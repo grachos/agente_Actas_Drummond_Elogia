@@ -6,11 +6,11 @@ const limpiar = (t) => String(t ?? '').replace(/\s+/g, ' ').trim(); // descripti
 
 // lineas: one order line or an array of them (a remesa may bill several lines). objetoDeOrden (historical name): the type has a
 // per-acta «objeto del servicio» that stays BLANK unless a person writes it (DEIPO).
-export function construirDatos(lectura, lineas, { consecutivo, hoy, objetoDeOrden = false }) {
+export function construirDatos(lectura, lineas, { hoy, objetoDeOrden = false }) {
   const fecha = parseISO(lectura.bill_fecha_despacho);
   const orden = String(lectura.orden_numero).trim().toUpperCase();
   return {
-    consecutivo,
+    consecutivo: '', // assigned when the acta is approved
     ...(objetoDeOrden ? { objeto: '' } : {}),
     fechaActa: dmy(hoy),
     cierre: { dia: hoy.dia, mes: hoy.mes, anio: hoy.anio },

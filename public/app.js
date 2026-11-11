@@ -1,5 +1,5 @@
 const $ = (s, r = document) => r.querySelector(s);
-const ESTADOS = { PENDIENTE: 'Pendiente', PROCESANDO: 'Procesando…', LISTA: 'Lista', REVISAR: 'Revisar', APROBADA: 'Aprobada', ERROR: 'Error' };
+const ESTADOS = { PENDIENTE: 'Pendiente', PROCESANDO: 'Procesando…', IGNORADA: 'Ignorada', LISTA: 'Lista', REVISAR: 'Revisar', APROBADA: 'Aprobada', ERROR: 'Error' };
 const st = { lotes: [], loteId: null, actas: [], sel: new Set(), cur: null, acta: null, tab: 'datos' };
 
 async function api(path, { method = 'GET', body } = {}) {
@@ -42,7 +42,7 @@ async function cargarActas() {
 function pintarLista() {
   $('#lista').innerHTML = st.actas.map((a) => `<li data-id="${a.id}" class="${a.id === st.cur ? 'cur' : ''}">
     <input type="checkbox" ${st.sel.has(a.id) ? 'checked' : ''} aria-label="Seleccionar">
-    <div class="meta"><b>${esc(a.remesa)}</b><span>${esc(a.consecutivo)}${a.tipo ? ' · ' + esc(a.tipo) : ''}${a.mensaje_error ? ' · ' + esc(a.mensaje_error) : ''}</span></div>
+    <div class="meta"><b>${esc(a.remesa)}</b><span>${esc(a.consecutivo || 'sin número aún')}${a.tipo ? ' · ' + esc(a.tipo) : ''}${a.mensaje_error ? ' · ' + esc(a.mensaje_error) : ''}</span></div>
     <span class="chip ${a.estado}">${ESTADOS[a.estado]}</span></li>`).join('');
   $('#selAll').checked = st.actas.length > 0 && st.actas.every((a) => st.sel.has(a.id));
 }
@@ -61,16 +61,16 @@ $('#nuevoFile').addEventListener('change', async (e) => {
     const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', raw: true });
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
     const h = rows[0].map((x) => String(x).trim().toLowerCase());
-    const ir = h.indexOf('remesa'), ic = h.indexOf('consecutivo'); const hasH = ir >= 0 && ic >= 0;
-    $('#nuevoTxt').value = rows.slice(hasH ? 1 : 0).filter((r) => r[0] !== '' || r[1] !== '').map((r) => `${String(hasH ? r[ir] : r[0]).trim()};${String(hasH ? r[ic] : r[1]).trim()}`).join('\n');
+    const ir = h.indexOf('remesa'); const hasH = ir >= 0;
+    $('#nuevoTxt').value = rows.slice(hasH ? 1 : 0).map((r) => String(hasH ? r[ir] : r[0]).trim()).filter(Boolean).join('\n');
   } catch { $('#nuevoMsg').textContent = 'No se pudo leer ese archivo.'; }
 });
 $('#nuevoForm').addEventListener('submit', async (e) => {
   if (e.submitter?.value !== 'ok') return; e.preventDefault();
-  const items = $('#nuevoTxt').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const [remesa, ...r] = l.split(/[;,\t ]+/); return { remesa, consecutivo: r.join(' ').trim() }; });
+  const items = $('#nuevoTxt').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => ({ remesa: l.split(/[;,\t ]+/)[0] }));
   try {
     const r = await api('/api/lotes/crear', { method: 'POST', body: { items } }); $('#nuevo').close();
-    if (r.duplicadas.length) alert(`${r.duplicadas.length} fila(s) ya existían (misma remesa y consecutivo) y se omitieron.`);
+    if (r.duplicadas.length) alert(`${r.duplicadas.length} remesa(s) ya existían en otro lote y se omitieron: ${r.duplicadas.map((x) => x.remesa).join(', ')}`);
     await cargarLotes(r.loteId);
   } catch (err) { $('#nuevoMsg').textContent = err.message; }
 });
@@ -91,7 +91,7 @@ $('#aprobBtn').addEventListener('click', async () => {
   const ids = st.actas.filter((a) => st.sel.has(a.id) && a.estado === 'LISTA').map((a) => a.id);
   if (!ids.length) return alert('Selecciona remesas en estado «Lista». Las que tienen alertas («Revisar») se aprueban una por una.');
   if (!confirm(`¿Aprobar ${ids.length} remesa(s) sin alertas?`)) return;
-  await api('/api/actas/aprobar', { method: 'POST', body: { ids } }); await cargarLotes(st.loteId);
+  const r = await api('/api/actas/aprobar', { method: 'POST', body: { ids } }); if (r.errores?.length) alert(r.errores.map((e) => e.mensaje).join('\n')); await cargarLotes(st.loteId);
 });
 $('#zipBtn').addEventListener('click', async () => {
   const sel = st.actas.filter((a) => st.sel.has(a.id) && a.estado === 'APROBADA');
@@ -109,7 +109,7 @@ $('#zipBtn').addEventListener('click', async () => {
 });
 
 /* ---------- revisión ---------- */
-const GENERALES = [['consecutivo', 'Consecutivo del acta'], ['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación']];
+const GENERALES = [['fechaActa', 'Fecha del acta (dd/mm/aaaa)'], ['ordenCompleta', 'Orden de compra'], ['fechaServicio', 'Fecha de inicio y terminación']];
 const LINEA = [['linea', 'Línea'], ['descripcion', 'Descripción', 'area'], ['cantidadOrden', 'Cantidad de la orden'], ['cantidadFacturada', 'Cantidad facturada'], ['valorUnitario', 'Valor unitario'], ['valorTotal', 'Valor total facturado', 'ro']];
 const lineasDe = (d) => d.lineas ?? [{ linea: d.linea, descripcion: d.descripcion, cantidadOrden: d.cantidadOrden, cantidadFacturada: d.cantidadFacturada, valorUnitario: d.valorUnitario, valorTotal: d.valorTotal }];
 const campo = (name, titulo, tipo, valor, mal) => `<label class="${mal ? 'bad' : ''}">${titulo}${tipo === 'area' ? `<textarea name="${name}" rows="3">${esc(valor)}</textarea>` : `<input name="${name}" value="${esc(valor)}" ${tipo === 'ro' ? 'readonly' : ''}>`}</label>`;
@@ -127,6 +127,7 @@ async function abrir(id, { pagina } = {}) {
   const { acta } = await api(`/api/actas/obtener?id=${id}`); st.acta = acta;
   const rv = $('#review');
   if (acta.estado === 'ERROR') { rv.innerHTML = `<p class="empty">${esc(acta.mensaje_error || 'Error al procesar.')}<br><br><button id="reint">Reintentar</button></p>`; $('#reint').onclick = async () => { await api('/api/actas/procesar', { method: 'POST', body: { id } }); await cargarActas(); abrir(id); }; return; }
+  if (acta.estado === 'IGNORADA') { rv.innerHTML = `<p class="empty">${esc(acta.mensaje_error)}<br><span class="muted small">No se genera acta para esta remesa. Si crees que es un error de lectura, puedes procesarla de nuevo.</span><br><br><button id="reint">Procesar de nuevo</button></p>`; $('#reint').onclick = async () => { await api('/api/actas/procesar', { method: 'POST', body: { id } }); await cargarActas(); abrir(id); }; return; }
   if (!acta.datos) { rv.innerHTML = `<p class="empty">${acta.estado === 'PENDIENTE' ? 'Aún no se ha procesado. Usa «Procesar pendientes».' : 'Esta remesa no tiene datos para el acta; revisa las alertas.'}${acta.alertas.length ? '<ul class="alerts">' + acta.alertas.map((a) => `<li>${esc(a.mensaje)}</li>`).join('') + '</ul>' : ''}</p>`; return; }
   const pg = acta.lectura?.paginas || {}; const malos = new Set(acta.alertas.map((a) => a.campo));
   rv.innerHTML = `<div class="split">
@@ -142,7 +143,7 @@ async function abrir(id, { pagina } = {}) {
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === st.tab));
     if (st.tab === 'acta') { pane.innerHTML = `<p class="muted small">Así saldrá el acta en el PDF (las firmas van en blanco). Se genera al abrir esta pestaña…</p><iframe title="Vista previa del acta" src="/api/actas/vistapdf?id=${id}&t=${Date.now()}#view=FitH&toolbar=1"></iframe>`; return; }
     pane.innerHTML = (acta.alertas.length ? `<ul class="alerts">${acta.alertas.map((a, i) => `<li data-i="${i}" title="Ver en el soporte">⚠ ${esc(a.mensaje)}</li>`).join('')}</ul>` : '<p class="muted">Sin alertas: las dos lecturas coinciden y las validaciones pasaron.</p>') +
-      `<div class="form" id="form">${GENERALES.map(([k, t]) => campo(k, t, '', acta.datos[k], malos.has('orden_numero') && k === 'ordenCompleta')).join('')}${'objeto' in acta.datos ? campo('objeto', 'Objeto del servicio (opcional; queda en blanco si no lo escribes)', 'area', acta.datos.objeto) : ''}${lineasDe(acta.datos).map((l, i) => `<fieldset><legend>Línea ${esc(l.linea)} de la orden de compra</legend>${LINEA.map(([k, t, tipo]) => campo(`l${i}.${k}`, t, tipo, l[k], (malos.has('linea') || malos.has('lineas_orden')) && k !== 'valorTotal')).join('')}</fieldset>`).join('')}${campo('adjuntos', 'Documentos adjuntos', 'area', acta.datos.adjuntos)}</div>`;
+      `<div class="form" id="form"><label>Consecutivo del acta (se asigna solo al aprobar)<input value="${esc(acta.datos.consecutivo || '')}" readonly></label>${GENERALES.map(([k, t]) => campo(k, t, '', acta.datos[k], malos.has('orden_numero') && k === 'ordenCompleta')).join('')}${'objeto' in acta.datos ? campo('objeto', 'Objeto del servicio (opcional; queda en blanco si no lo escribes)', 'area', acta.datos.objeto) : ''}${lineasDe(acta.datos).map((l, i) => `<fieldset><legend>Línea ${esc(l.linea)} de la orden de compra</legend>${LINEA.map(([k, t, tipo]) => campo(`l${i}.${k}`, t, tipo, l[k], (malos.has('linea') || malos.has('lineas_orden')) && k !== 'valorTotal')).join('')}</fieldset>`).join('')}${campo('adjuntos', 'Documentos adjuntos', 'area', acta.datos.adjuntos)}</div>`;
     pane.querySelectorAll('.alerts li').forEach((li) => li.addEventListener('click', () => { const p = PAGINA(acta.alertas[li.dataset.i].campo, pg); if (p) $('#pdfv').src = `/api/actas/soporte?id=${id}&t=${Date.now()}#page=${p}&view=FitH`; }));
   };
   const actual = () => Object.fromEntries([...document.querySelectorAll('#form [name]')].map((i) => [i.name, i.value]));
@@ -156,7 +157,7 @@ async function abrir(id, { pagina } = {}) {
   pintaPane();
   const leer = () => desaplanar(actual());
   $('#gBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await cargarActas(); abrir(id); } catch (e) { alert(e.message); } };
-  $('#aBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); await api('/api/actas/aprobar', { method: 'POST', body: { ids: [id] } }); await cargarActas(); siguiente(1); } catch (e) { alert(e.message); } };
+  $('#aBtn').onclick = async () => { try { if (st.tab === 'datos') await api('/api/actas/guardar', { method: 'POST', body: { id, datos: leer() } }); const r = await api('/api/actas/aprobar', { method: 'POST', body: { ids: [id] } }); if (r.errores?.length) { alert(r.errores[0].mensaje); return; } await cargarActas(); siguiente(1); } catch (e) { alert(e.message); } };
 }
 function siguiente(d) {
   const i = st.actas.findIndex((a) => a.id === st.cur); const n = st.actas.slice(i + d)[d > 0 ? 'find' : 'findLast']?.((a) => a.estado !== 'APROBADA' || d < 0);

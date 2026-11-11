@@ -50,8 +50,8 @@
 <dialog id="nuevo">
   <form method="dialog" class="card" id="nuevoForm">
     <h2>Nuevo lote</h2>
-    <p class="muted">Una remesa por línea: <code>remesa ; consecutivo</code> (separado por «;», coma, tabulación o espacio). También puedes subir un Excel con columnas <b>remesa</b> y <b>consecutivo</b>.</p>
-    <textarea id="nuevoTxt" rows="10" placeholder="0101219749;CPLTD-053-26"></textarea>
+    <p class="muted">Una remesa por línea (solo el número). También puedes subir un Excel con una columna <b>remesa</b>. El consecutivo del acta se asigna solo al aprobar, según «Configuración». Solo se genera acta si el Bill of Inland dice «SEGÚN TRF».</p>
+    <textarea id="nuevoTxt" rows="10" placeholder="0101219749"></textarea>
     <input type="file" id="nuevoFile" accept=".xlsx,.xls,.csv">
     <p id="nuevoMsg" class="error" role="alert"></p>
     <div class="row"><button value="cancel" formnovalidate>Cancelar</button><button class="primary" id="nuevoOk" value="ok">Crear lote</button></div>

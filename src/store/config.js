@@ -16,7 +16,8 @@ export async function listarConfig() {
   const rows = await q('SELECT tipo, config FROM acta_tipos ORDER BY tipo');
   const comun = rows.find((r) => r.tipo === COMUN);
   const imgs = comun ? JSON.parse(comun.config) : {};
-  return { tipos: rows.filter((r) => r.tipo !== COMUN).map((r) => ({ tipo: r.tipo, ...JSON.parse(r.config) })), logo: Boolean(imgs.logo), firma: Boolean(imgs.firma) };
+  const sig = Object.fromEntries((await q('SELECT tipo, siguiente FROM consecutivos')).map((r) => [r.tipo, r.siguiente]));
+  return { tipos: rows.filter((r) => r.tipo !== COMUN).map((r) => ({ tipo: r.tipo, siguiente: sig[r.tipo] ?? null, ...JSON.parse(r.config) })), logo: Boolean(imgs.logo), firma: Boolean(imgs.firma) };
 }
 export async function guardarImagen(campo, dataUri) {
   const [r] = await q('SELECT config FROM acta_tipos WHERE tipo = ?', [COMUN]);
@@ -29,3 +30,6 @@ export async function loadWafCookies() {
   return r ? JSON.parse(r.cookies) : null;
 }
 export const saveWafCookies = (c) => q('INSERT INTO waf_cookies (id, cookies) VALUES (1, ?) ON DUPLICATE KEY UPDATE cookies = VALUES(cookies)', [JSON.stringify(c)]);
+
+// Next acta number of a type (the number given to the next approved acta).
+export const guardarSiguiente = (tipo, n) => q('INSERT INTO consecutivos (tipo, siguiente) VALUES (?, ?) ON DUPLICATE KEY UPDATE siguiente = VALUES(siguiente)', [tipo, n]);

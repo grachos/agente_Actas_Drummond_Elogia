@@ -16,6 +16,11 @@ test('DEIPO variant: own header code, blank object, several lines, 5-signature b
   assert.ok(headerTemplate(dei).includes('SIGDEI-0331') && headerTemplate(dei).includes('03-02-2022'));
 });
 
+test('the acta number shows a placeholder until it is assigned', () => {
+  assert.ok(actaHtml(cfg, { ...d, consecutivo: '' }).includes('(se asigna al aprobar)'));
+  assert.ok(actaHtml(cfg, { ...d, consecutivo: 'CPLTD-068-26' }).includes('CPLTD-068-26'));
+});
+
 test('acta html carries every value, escapes text and closes with the acta date', () => {
   const h = actaHtml(cfg, d);
   for (const v of ['11/11/2026', 'CPLTD-1', 'DCI-0000', 'PUERTO', '3,00', '1.296.000', 'A &amp; B &lt;x&gt;', '11 días', 'NOVIEMBRE', '2026']) assert.ok(h.includes(v), v);

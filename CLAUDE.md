@@ -39,13 +39,13 @@ Navegador (public/) ── /api/* (funciones Vercel, Node 22, 60 s) ──┬─
 | `db/*.sql` | Esquema (idempotente, se aplica al primer uso). |
 | `public/` | Front estático: `index.html`+`app.js` (aplicación), `config.html`+`config.js` (configuración). |
 | `scripts/` | `dev-server.mjs` (servidor local tipo Vercel), `migrate.mjs`, `seed-config.mjs`, `demo-acta.mjs`. |
-| `tests/` | 18 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
+| `tests/` | 21 pruebas (`npm test`); las de BD corren si existe `TEST_DATABASE_URL`. |
 
 ## Flujo funcional y estados
-1. **Entrada**: lote de remesas + consecutivo (una línea `remesa;consecutivo`, o Excel con columnas `remesa` y `consecutivo`). Máx. 500 por lote. Par (remesa, consecutivo) único: los repetidos se omiten.
-2. **Procesar** (por remesa): baja el soporte → 2 lecturas con IA en paralelo → validaciones → guarda datos y alertas. Estados: `PENDIENTE → PROCESANDO → LISTA` (sin alertas) | `REVISAR` (con alertas) | `ERROR`. Reclamo atómico (doble clic seguro). Si la función muere, a los 3 min una remesa `PROCESANDO` se muestra como `ERROR/TIMEOUT` y se puede reintentar.
+1. **Entrada**: lote de **remesas** (una por línea, o Excel con columna `remesa`); ya **no se pasa consecutivo**. Máx. 500 por lote. Una remesa que ya existe en cualquier lote se omite (una acta por remesa).
+2. **Procesar** (por remesa): baja el soporte → 2 lecturas con IA en paralelo → validaciones → guarda datos y alertas. **Regla «SEGÚN TRF»** (dueño, 2026-11-11): solo se hace acta si el recuadro «COST CENTER» del Bill of Inland dice «SEGÚN TRF» (se compara sin tildes ni mayúsculas); si ninguna de las 2 lecturas lo encuentra y el recuadro es legible, la remesa queda **`IGNORADA`** (se ve en la lista con el motivo, no consume número y se puede «Procesar de nuevo»); si las lecturas difieren o no es legible → `REVISAR` con alerta. Estados: `PENDIENTE → PROCESANDO → LISTA` (sin alertas) | `REVISAR` (con alertas) | `IGNORADA` | `ERROR`. Reclamo atómico (doble clic seguro). Si la función muere, a los 3 min una remesa `PROCESANDO` se muestra como `ERROR/TIMEOUT` y se puede reintentar.
 3. **Revisión** (una sola pantalla): soporte de Silogtran a la izquierda (visor PDF del navegador), a la derecha pestañas **Datos** (editables, alertas clicables que saltan a la página de origen) y **Vista previa del acta** (el PDF real del acta, sin el soporte). Editar una acta aprobada la devuelve a `LISTA`.
-4. **Aprobar**: individual (Ctrl+Enter = aprobar y pasar a la siguiente; Alt+↑/↓ navegar) o por selección (solo las `LISTA`; las `REVISAR` se aprueban una por una). Queda registrado quién y cuándo.
+4. **Aprobar**: individual (Ctrl+Enter = aprobar y pasar a la siguiente; Alt+↑/↓ navegar) o por selección (solo las `LISTA`; las `REVISAR` se aprueban una por una). Queda registrado quién y cuándo. **Al aprobar se asigna el consecutivo** `TIPO-NNN-AA` (prefijo de la orden + número de 3 cifras del contador del tipo + 2 últimas cifras del año de Bogotá), dentro de una transacción (secuencial, sin repetidos aunque aprueben varios a la vez); el contador sube en 1. Si el tipo no tiene contador configurado no se puede aprobar (mensaje). Un acta que ya tiene número lo conserva al re-aprobarla tras editarla. El consecutivo no se escribe a mano.
 5. **Descargar**: solo actas `APROBADA`. Un PDF final = acta + soporte sin tocar, nombre `<TIPO>_<remesa>.pdf`. Varias → ZIP armado en el navegador (3 en paralelo).
 6. **Correo (Microsoft 365)**: pendiente (I7).
 
@@ -98,7 +98,7 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 **Variables por acta** (editables en la revisión):
 | Campo | Origen / regla |
 |---|---|
-| Consecutivo | lo da el usuario (Excel o pantalla) |
+| Consecutivo | automático al aprobar: `TIPO-NNN-AA` desde el contador de «Configuración» (ej. `CPLTD-069-26`); la vista previa muestra «(se asigna al aprobar)» |
 | Orden de compra | página de la orden (con prefijo) |
 | Línea(s) / descripción | línea(s) de la orden indicadas en el Bill; descripción **tal cual, incluida la «JURISDICCIÓN: …»** (confirmado 2026-11-11; corrige la decisión anterior de omitirla) |
 | Cantidad de la orden | `Quantity` impresa (`3.00EA` → `3,00`) |
@@ -112,16 +112,16 @@ Se generan con una **plantilla HTML** (`src/actas/html.js`) renderizada a PDF co
 Correcciones a los modelos ya aplicadas en la plantilla: sin el «JUN(» suelto; ejemplo «(ej: mails internos… paz y salvos, otros)» completo y aparte; cláusula 4 y párrafo del «Manual Integral…» completos en todos; fecha del acta = fecha del cierre; «Angélica Cuao» y «días» bien escritos; «identificada».
 
 ## Modelo de datos (MySQL, `db/*.sql`, utf8mb4)
-`usuarios` (identidad Silogtran, sin clave) · `lotes` · `actas` (remesa, consecutivo, tipo, estado, error, `lectura`/`alertas`/`datos` JSON, aprobado_por/en; único por remesa+consecutivo) · `acta_tipos` (config JSON por tipo + `_COMUN` con logo/firma) · `waf_cookies` · `login_intentos`. El esquema se crea solo (`src/db.js`, idempotente) y, si la variable `ACTAS_SEED` trae JSON `{TIPO:{...}}`, se **agregan los tipos que falten** (nunca sobrescribe lo ya editado en la BD).
+`usuarios` (identidad Silogtran, sin clave) · `lotes` · `actas` (remesa, consecutivo asignado al aprobar, tipo, estado, error, `lectura`/`alertas`/`datos` JSON, aprobado_por/en) · `acta_tipos` (config JSON por tipo + `_COMUN` con logo/firma) · `consecutivos` (tipo → próximo número; inicial CPLTD 68, CMLTD 75; los demás los configura el dueño) · `waf_cookies` · `login_intentos` · `schema_migrations` (cada `db/*.sql` se aplica una vez). El esquema se crea solo (`src/db.js`, idempotente) y, si la variable `ACTAS_SEED` trae JSON `{TIPO:{...}}`, se **agregan los tipos que falten** (nunca sobrescribe lo ya editado en la BD).
 
 ## API (todas exigen sesión salvo health y login)
-`GET /api/health` · `POST /api/auth/login|logout`, `GET /api/auth/me` · `POST /api/lotes/crear`, `GET /api/lotes/listar|ver` · `POST /api/actas/procesar|guardar|aprobar|desaprobar`, `GET /api/actas/obtener|soporte|vistapdf|pdf` · `/api/admin/config|tipo|imagen` (sesión **y** cabecera `x-admin-key`). La sesión es una cookie firmada (`TOKEN_SECRET`, 8 h). Los datos editados se validan en el servidor (`validarEdicion.js`).
+`GET /api/health` · `POST /api/auth/login|logout`, `GET /api/auth/me` · `POST /api/lotes/crear`, `GET /api/lotes/listar|ver` · `POST /api/actas/procesar|guardar|aprobar|desaprobar`, `GET /api/actas/obtener|soporte|vistapdf|pdf` · `/api/admin/config|tipo|consecutivo|imagen` (basta la sesión: **cualquier usuario puede cambiar la configuración**, decisión del dueño 2026-11-11; ya no hay clave de administrador). La sesión es una cookie firmada (`TOKEN_SECRET`, 8 h). Los datos editados se validan en el servidor (`validarEdicion.js`).
 
 ## Configuración y despliegue
-- **Variables** (ver `.env.example`): `DATABASE_URL`, `TOKEN_SECRET`, `ADMIN_KEY`, `ANTHROPIC_API_KEY`, `SILOG_BASE_URL`, `SOPORTE_SUFIJO`; opcionales `IA_MODELO`, `DATABASE_SSL`, `WAF_*`, `SILOG_TIMEOUT_SEC`; correo (I7) por definir. Solo local: `ACTAS_MOCK=1`.
+- **Variables** (ver `.env.example`): `DATABASE_URL`, `TOKEN_SECRET`, `ANTHROPIC_API_KEY`, `SILOG_BASE_URL`, `SOPORTE_SUFIJO`; opcionales `IA_MODELO`, `DATABASE_SSL`, `WAF_*`, `SILOG_TIMEOUT_SEC`; correo (I7) por definir. Solo local: `ACTAS_MOCK=1`.
 - **Hostinger**: base MySQL **propia** de este proyecto (no se tocaron las otras bases de la cuenta), con acceso remoto `%` porque Vercel no tiene IP fija. Datos de conexión solo en `DATABASE_URL` (Vercel). Endurecer más adelante si hay IP fija o un túnel.
 - **Vercel**: proyecto `agente_actas_drummond` ligado a este repo. **La rama de producción hoy es `claude/blissful-cray-f70po1`** (cada push despliega). Variables sensibles: no se pueden volver a leer; si se pierde `ADMIN_KEY`, se rota (API/MCP de Vercel o panel) y se vuelve a desplegar. La protección «Vercel Authentication» debe estar **apagada** para que los usuarios entren (la app tiene su propio login).
-- **Primera puesta en marcha**: entrar → `/config.html` (clave de administrador) → subir logo y firma → revisar los valores fijos.
+- **Primera puesta en marcha**: entrar → `/config.html` → subir logo y firma → revisar los valores fijos y **configurar el próximo consecutivo de cada tipo** (DEIPO y EDLTD están sin configurar).
 - **Operación**: los tiempos quedan en los registros de Vercel (`[procesar] descarga … ms`, `lectura x2 … ms`); errores por remesa en pantalla.
 
 ## Desarrollo local
@@ -141,6 +141,7 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 2. Probar una **remesa DEIPO real** (varias líneas en el Bill, objeto en blanco).
 3. **Correo Microsoft 365** (I7): Graph `sendMail`, app de Azure (`Mail.Send`) y buzón remitente; envío individual o por bloques (≈20 MB por correo), registro de envíos.
 4. Revisar con el dueño qué hay en Silogtran para `0101219775` y si re-subir un adjunto cambia el sufijo.
+4b. **Configurar los contadores** de DEIPO y EDLTD en `/config.html` (el dueño). Supuestos a confirmar: el número configurado es el que recibe la **próxima** acta (CPLTD 68 → la primera es `CPLTD-068-26`, luego 069); el contador **no se reinicia solo** al cambiar de año (el sufijo `-AA` sí cambia; el dueño lo reajusta en enero).
 5. Si hace falta: PDF.js como visor, tope por lote, manual de uso, endurecer el acceso remoto a la BD.
 6. Si se quiere dar de baja la rama de producción actual: pasar a `main` (fusionar) y cambiar la rama de producción en Vercel.
 
@@ -153,3 +154,4 @@ Con `ACTAS_MOCK=1` el servidor local usa `fixtures/soporte/<remesa>.pdf`, `fixtu
 - 2026-11-10/11: el prefijo de la orden decide el tipo; una acta por remesa; salida en PDF; consecutivo por Excel o pantalla; nombres fijos por tipo; contrato fijo por tipo; planeador y AFE = N/A; cantidad facturada = 1; fecha de servicio = despacho del Bill; fecha del acta = hoy; descripción tal cual; sufijo del soporte siempre `_57`; IA = Anthropic; Vercel + base MySQL de Hostinger; cada usuario entra con su cuenta de Silogtran; 4–6 usuarios, lotes de 100–300; correo Microsoft 365; nombre del archivo `<TIPO>_<remesa>.pdf`; revisión en una sola pantalla con vista previa en PDF.
 - 2026-11-11 (prueba en la app): la **descripción incluye la jurisdicción**; en DEIPO el **objeto del servicio queda en blanco**; una remesa puede tener **varias líneas** de la orden (una fila por línea en el acta).
 - 2026-11-11: cantidad facturada = `PO Price ÷ (Extended Amt ÷ Quantity)` para todos los tipos (1 normalmente; 2, 3… 20 si el valor del medio es esas veces el valor unitario); ejemplo del dueño: total 200, cantidad 4, medio 150 → unitario 50, facturada 3, valor a facturar 150. DEIPO usa la misma lógica (el modelo con «30 de la orden / 25 facturadas» es solo ilustrativo). Una versión anterior de esta regla estaba invertida y se corrigió.
+- 2026-11-11: **(1)** la configuración la puede cambiar cualquier usuario (sin clave de administrador); **(2)** solo se genera acta si el Bill de Inland dice «SEGÚN TRF» en «COST CENTER», si no la remesa se ignora; **(3)** el consecutivo ya no se pasa por Excel ni a mano: se parametriza por tipo en Configuración (inicio CPLTD 68 → `CPLTD-068-26`, CMLTD 75 → `CMLTD-075-26`; el resto lo configura el dueño) y se compone `prefijo + consecutivo + 2 cifras del año`.

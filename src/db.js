@@ -19,7 +19,14 @@ async function ensureSchema() {
   const cx = await mysql.createConnection({ uri: process.env.DATABASE_URL, multipleStatements: true, charset: 'utf8mb4', connectTimeout: 10000, ssl: process.env.DATABASE_SSL === '1' ? { rejectUnauthorized: false } : undefined });
   try {
     const dir = new URL('../db/', import.meta.url);
-    for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) await cx.query(readFileSync(new URL(f, dir), 'utf8'));
+    await cx.query('CREATE TABLE IF NOT EXISTS schema_migrations (name VARCHAR(100) PRIMARY KEY, aplicada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+    const [hechas] = await cx.query('SELECT name FROM schema_migrations');
+    const aplicadas = new Set(hechas.map((r) => r.name));
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
+      if (aplicadas.has(f)) continue;
+      await cx.query(readFileSync(new URL(f, dir), 'utf8'));
+      await cx.query('INSERT IGNORE INTO schema_migrations (name) VALUES (?)', [f]);
+    }
     if (process.env.ACTAS_SEED) {
       // adds the types that are missing; never overwrites values already edited in the DB
       for (const [tipo, cfg] of Object.entries(JSON.parse(process.env.ACTAS_SEED))) await cx.query('INSERT IGNORE INTO acta_tipos (tipo, config) VALUES (?, ?)', [tipo, JSON.stringify(cfg)]);

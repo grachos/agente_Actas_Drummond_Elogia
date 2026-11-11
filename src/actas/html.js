@@ -63,7 +63,7 @@ export function actaHtml(cfg, d) {
   </table>
   <table class="f">
     ${row('CONTRATISTA / PROVEEDOR:', cfg.contratista)}
-    ${row('NUMERO DE CONSECUTIVO DEL ACTA', d.consecutivo, '(Numeración interna del Contratista / Proveedor)')}
+    ${row('NUMERO DE CONSECUTIVO DEL ACTA', d.consecutivo || '(se asigna al aprobar)', '(Numeración interna del Contratista / Proveedor)')}
     <tr><td colspan="2"><b>OBJETO DEL SERVICIO:</b><br><b>${esc(cfg.objetoDeOrden ? d.objeto : cfg.objeto)}</b></td></tr>
   </table>
   <table class="f">

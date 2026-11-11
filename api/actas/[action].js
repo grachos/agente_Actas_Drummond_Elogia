@@ -19,13 +19,13 @@ export default route({
     await requireSession(req);
     const id = intParam(body(req).id); const a = await cargar(id);
     if (!['LISTA', 'REVISAR', 'APROBADA'].includes(a.estado)) throw new ApiError('ESTADO_INVALIDO', 'Esa acta aún no está lista para editar.', { status: 409 });
-    await A.guardarDatos(id, sanearDatos(body(req).datos));
+    await A.guardarDatos(id, sanearDatos(body(req).datos, a.datos?.consecutivo ?? ''));
     res.status(200).json({ ok: true, acta: await cargar(id) });
   },
   'POST:aprobar': async (req, res) => {
     const u = await requireSession(req);
     const ids = (body(req).ids ?? []).map((x) => intParam(x));
-    res.status(200).json({ ok: true, aprobadas: await A.aprobar(ids, u.id) });
+    res.status(200).json({ ok: true, ...(await A.aprobar(ids, u.id)) });
   },
   'POST:desaprobar': async (req, res) => { await requireSession(req); await A.desaprobar(intParam(body(req).id)); res.status(200).json({ ok: true }); },
   'GET:soporte': async (req, res) => { await requireSession(req); const a = await cargar(intParam(req.query.id)); pdf(res, await descargarSoporte(a.remesa), `${a.remesa}_soporte.pdf`); },

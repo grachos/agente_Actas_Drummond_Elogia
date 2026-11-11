@@ -13,6 +13,7 @@ const TOOL = {
       remesa_numero: str('Número impreso en «REMESA TERRESTRE DE CARGA» (campo No.), solo dígitos'),
       remesa_fecha: str('Fecha de la remesa AAAA-MM-DD (campos AÑO / MES / DÍA)'),
       remesa_placa: str('Placa del vehículo en la remesa, 3 letras + 3 dígitos, sin espacios'),
+      bill_centro_costo: str('Texto del recuadro «COST CENTER» del Bill of Inland (ej. «SEGÚN TRF»); null si el recuadro está vacío'),
       bill_codigo: str('Valor de «# BILL OF INLAND», ej. SMR025SEP26'),
       bill_cargo_consignment: str('Valor de «CARGO CONSIGNMENT» del Bill of Inland, solo dígitos'),
       bill_fecha_despacho: str('«DATE OF DISPATCH» del Bill of Inland como AAAA-MM-DD (día / mes abreviado / año de 2 dígitos)'),

@@ -23,7 +23,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .lista li.cur { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .lista .meta { flex: 1; min-width: 0; } .lista .meta b { display: block; } .lista .meta span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .chip { font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); white-space: nowrap; }
-.chip.LISTA, .chip.APROBADA { color: var(--ok); border-color: var(--ok); } .chip.REVISAR { color: var(--warn); border-color: var(--warn); } .chip.ERROR { color: var(--bad); border-color: var(--bad); }
+.chip.LISTA, .chip.APROBADA { color: var(--ok); border-color: var(--ok); } .chip.REVISAR { color: var(--warn); border-color: var(--warn); } .chip.IGNORADA { color: var(--muted); border-style: dashed; } .chip.ERROR { color: var(--bad); border-color: var(--bad); }
 .progress { margin: 0 8px 8px; position: relative; height: 18px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .progress div { height: 100%; background: var(--accent); width: 0; opacity: .35; } .progress span { position: absolute; inset: 0; text-align: center; font-size: 12px; }
 .review { min-width: 0; min-height: 0; display: grid; }

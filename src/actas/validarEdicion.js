@@ -3,15 +3,16 @@ import { ApiError } from '../http/errors.js';
 import { esFechaValida } from '../lib/fechas.js';
 import { recalcularTotal, lineasDe } from './datos.js';
 
-const GENERALES = { consecutivo: 50, ordenCompleta: 40, adjuntos: 300, fechaActa: 10, fechaServicio: 10 };
+const GENERALES = { ordenCompleta: 40, adjuntos: 300, fechaActa: 10, fechaServicio: 10 };
 const LINEA = { linea: 4, descripcion: 400, cantidadOrden: 12, cantidadFacturada: 12, valorUnitario: 20 };
 const DMY = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 const MAX_LINEAS = 6;
 const bad = (m) => { throw new ApiError('DATOS_INVALIDOS', m, { status: 400 }); };
 const limpio = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
 
-export function sanearDatos(input) {
-  const d = {};
+// consecutivo: the acta number is never typed by hand; the stored one (assigned at approval) is kept.
+export function sanearDatos(input, consecutivo = '') {
+  const d = { consecutivo };
   for (const [k, max] of Object.entries(GENERALES)) {
     const v = limpio(input?.[k]);
     if (!v) bad(`El campo «${k}» no puede estar vacío.`);
